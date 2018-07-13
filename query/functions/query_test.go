@@ -24,6 +24,7 @@ var skipTests = map[string]string{
 	"string_max":                "error: invalid use of function: *functions.MaxSelector has no implementation for type string (https://github.com/influxdata/platform/issues/224)",
 	"null_as_value":             "null not supported as value in influxql (https://github.com/influxdata/platform/issues/353)",
 	"difference_panic":          "difference() panics when no table is supplied",
+	"filter_by_regex_function":  "Regex as function argument not working in flux (https://github.com/influxdata/platform/issues/408)",
 }
 
 func Test_QueryEndToEnd(t *testing.T) {
