@@ -159,11 +159,13 @@ func (e *DelimitedMultiResultEncoder) Encode(w io.Writer, results ResultIterator
 	for results.More() {
 		result := results.Next()
 		if _, err := e.Encoder.Encode(wc, result); err != nil {
-			// if we encounter an error, cancel the results to stop the query...
+			// If we encounter an error, cancel the results to stop the query and free its resources
 			results.Cancel()
 			return wc.Count(), err
 		}
 		if _, err := wc.Write(e.Delimiter); err != nil {
+			// If we encounter an error, cancel the results to stop the query and free its resources
+			results.Cancel()
 			return wc.Count(), err
 		}
 		// Flush the writer after each result
