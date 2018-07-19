@@ -15,7 +15,6 @@ import (
 	"github.com/influxdata/platform/query/csv"
 	"github.com/influxdata/platform/query/influxql"
 	"github.com/influxdata/platform/query/querytest"
-	"github.com/pkg/errors"
 
 	"github.com/andreyvit/diff"
 )
@@ -83,21 +82,15 @@ func Test_QueryEndToEnd(t *testing.T) {
 		fluxName := caseName + ".flux"
 		influxqlName := caseName + ".influxql"
 		t.Run(fluxName, func(t *testing.T) {
-			err := queryTester(t, qs, prefix, ".flux")
-			if err != nil {
-				qs = querytest.GetQueryServiceBridge()
-			}
+			queryTester(t, qs, prefix, ".flux")
 		})
 		t.Run(influxqlName, func(t *testing.T) {
-			err := queryTranspileTester(t, influxqlTranspiler, qs, prefix, ".influxql")
-			if err != nil {
-				qs = querytest.GetQueryServiceBridge()
-			}
+			queryTranspileTester(t, influxqlTranspiler, qs, prefix, ".influxql")
 		})
 	}
 }
 
-func queryTester(t *testing.T, qs query.QueryService, prefix, queryExt string) error {
+func queryTester(t *testing.T, qs query.QueryService, prefix, queryExt string) {
 	q, err := querytest.GetTestData(prefix, queryExt)
 	if err != nil {
 		t.Fatal(err)
@@ -116,10 +109,10 @@ func queryTester(t *testing.T, qs query.QueryService, prefix, queryExt string) e
 	csvIn := prefix + ".in.csv"
 	enc := csv.NewMultiResultEncoder(csv.DefaultEncoderConfig())
 
-	return QueryTestCheckSpec(t, qs, spec, csvIn, csvOut, enc)
+	QueryTestCheckSpec(t, qs, spec, csvIn, csvOut, enc)
 }
 
-func queryTranspileTester(t *testing.T, transpiler query.Transpiler, qs query.QueryService, prefix, queryExt string) error {
+func queryTranspileTester(t *testing.T, transpiler query.Transpiler, qs query.QueryService, prefix, queryExt string) {
 	q, err := querytest.GetTestData(prefix, queryExt)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -147,12 +140,12 @@ func queryTranspileTester(t *testing.T, transpiler query.Transpiler, qs query.Qu
 	jsonOut, err := querytest.GetTestData(prefix, ".out.json")
 	if err != nil {
 		t.Logf("skipping json evaluation: %s", err)
-		return nil
+		return
 	}
-	return QueryTestCheckSpec(t, qs, spec, csvIn, jsonOut, enc)
+	QueryTestCheckSpec(t, qs, spec, csvIn, jsonOut, enc)
 }
 
-func QueryTestCheckSpec(t *testing.T, qs query.QueryService, spec *query.Spec, inputFile, want string, enc query.MultiResultEncoder) error {
+func QueryTestCheckSpec(t *testing.T, qs query.QueryService, spec *query.Spec, inputFile, want string, enc query.MultiResultEncoder) {
 	t.Helper()
 
 	querytest.ReplaceFromSpec(spec, inputFile)
@@ -160,11 +153,10 @@ func QueryTestCheckSpec(t *testing.T, qs query.QueryService, spec *query.Spec, i
 	got, err := querytest.GetQueryEncodedResults(qs, spec, inputFile, enc)
 	if err != nil {
 		t.Errorf("failed to run query: %v", err)
-		return errors.New("Error running query")
+		return
 	}
 
 	if g, w := strings.TrimSpace(got), strings.TrimSpace(want); g != w {
 		t.Errorf("result not as expected want(-) got (+):\n%v", diff.LineDiff(w, g))
 	}
-	return nil
 }
