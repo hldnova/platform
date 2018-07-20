@@ -394,6 +394,14 @@ The time type name is `time`.
 A _duration type_ represents a length of time with nanosecond precision.
 The duration type name is `duration`.
 
+Durations can be added to times to produce a new time.
+
+Examples:
+
+    2018-07-01T00:00:00Z + 1mo // 2018-08-01T00:00:00Z
+    2018-07-01T00:00:00Z + 2y  // 2020-07-01T00:00:00Z
+    2018-07-01T00:00:00Z + 5h  // 2018-07-01T05:00:00Z
+
 #### Interval types
 
 An _interval type_ represents a length of time with explicit start and stop times.
