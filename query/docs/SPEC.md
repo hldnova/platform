@@ -218,55 +218,6 @@ The format follows the RFC 3339 specification.
     fractional_second = "."  { decimal_digit } .
     time_offset       = "Z" | ("+" | "-" ) hour ":" minute .
 
-
-#### Interval literals
-
-An interval literal is a representation of a length of time with absolute start and stop times.
-It has start and stop times.
-
-    interval_lit = "(" date_time_lit "," date_time_lit ")" .
-
-Intervals represent a length of time with explicit start and stop times.
-The start time is inclusive and the stop time is exclusive.
-
-#### Interval comprehensions
-
-An interval comprehension is a representation of an unbounded set of intervals.
-It has a up to three duration literals and an optional predicate.
-
-The first duration literal is called the "every" duration.
-It is the duration between starts of each of the intervals
-The optional second duration literal is called the "period" duration.
-It is the length of each interval and it defaults to the value of the "every" duration.
-The "period" duration can be negative, indicating the start and stop boundaries are reversed.
-The optional third duration literal is called the "offset" duration.
-It is the offset from the time zone epoch time, it defaults to time zone offset of the `now()` time.
-To specify the "offset" duration both the "every" and "period" durations must be specified.
-
-The optional predicate allows for the exclusion of some of the intervals based on the predicate logic.
-
-    IntervalComprehension = "{" duration_lit { ":" duration_lit { ":" duration_lit } } { FunctionLit } "}" .
-
-An interval comprehensions represents a function that takes `start` and `stop` arguments, and returns an interval generator.
-The generated intervals all intersect with the interval defined by the `start` and `stop` arguments.
-The generated intervals occur at a frequency of the "every" duration, have length of the "period" duration, and are offset from the time zone epoch time by the "offset" duration.
-
-Examples:
-
-    {1h}        // 1 hour intervals
-    {1h:2h}     // 2 hour long intervals every 1 hour
-    {1h:2h:30m} // 2 hour long intervals every 1 hour starting at 30m past the hour
-    {1w:1w:1d}  // 1 week intervals starting on Monday (by default weeks start on Sunday)
-    {1d:-1h}    // the hour from 11PM - 12AM every night
-
-Examples using a predicate:
-
-    {1d:1d (t) => !(weekday(t:t) in {Sunday, Satruday})}     // 1 day intervals excluding weekends
-    {1d:8h:9h (t) => !(weekday(t:t) in {Sunday, Satruday})}  // Work hours from 9AM - 5PM on work days.
-
-
-[IMPL#XXX](https://github.com/influxdata/platform/query/issues/XXX) Parse interval literals
-
 #### String literals
 
 A string literal represents a sequence of characters enclosed in double quotes.
@@ -401,12 +352,6 @@ Examples:
     2018-07-01T00:00:00Z + 1mo // 2018-08-01T00:00:00Z
     2018-07-01T00:00:00Z + 2y  // 2020-07-01T00:00:00Z
     2018-07-01T00:00:00Z + 5h  // 2018-07-01T05:00:00Z
-
-#### Interval types
-
-An _interval type_ represents a length of time with explicit start and stop times.
-The start time is inclusive and the stop time is exclusive.
-The interval type name is `interval`.
 
 #### String types
 
@@ -622,7 +567,7 @@ Below is a list of all options that are currently implemented in the Flux langua
 
 * now
 * task
-* timeZone
+* location
 
 ##### now
 
@@ -643,19 +588,15 @@ The `task` option is used by a scheduler to schedule the execution of a Flux que
         retry: 5,           // number of times to retry a failed query
     }
 
-##### timeZone
+##### location
 
-The `timeZone` option is used to set the time zone of all times in the script.
-Its value is the offset from UTC. The default value is the time zone of the running process.
+The `location` option is used to set the time zone of all times in the script.
+The location maps the UTC offset in use at that location for a given time.
+Its value is the offset from UTC. The default value is the location of the running process.
 
-    option timeZone = -5h // set timezone to be 5 hours west of UTC
-    option timeZone = loadTimeZone(name:"America/Denver") // set timezone to be America/Denver
+    option location = fixedZone(offset:-5h) // set timezone to be 5 hours west of UTC
+    option location = loadLocation(name:"America/Denver") // set location to be America/Denver
 
-The time zone "epoch" time is defined as, the time zone offset added to the Unix epoch (1970-01-01T00:00:00Z).
-
-QUESTION: Using the offset is simple, but what about daylight savings time, when the offset changes depending on the date?
-Does timeZone need to be a function that return the offset given a date?
-Do Flux scripts need direct access to the time zone offset? Or can that be hidden in the engine?
 
 #### Return statements
 
@@ -783,7 +724,7 @@ Tuesday   = 2
 Wednesday = 3
 Thursday  = 4
 Friday    = 5
-Satruday  = 6
+Saturday  = 6
 ```
 
 ###### Months of the year
@@ -831,6 +772,56 @@ The builtin function `systemTime` returns the current system time.
 All calls to `systemTime` within a single evaluation of a Flux script return the same time.
 
 [IMPL#XXX](https://github.com/influxdata/platform/query/issues/XXX) Make systemTime consistent for a single evaluation.
+
+#### Intervals
+
+Intervals is a function that produces a set of time intervals.
+An interval is an object with `start` and `stop` properties that correspond to the inclusive start and exclusive stop times of the time interval.
+
+Intervals has the following parameters:
+
+
+* `every` duration
+    Every is the duration between starts of each of the intervals
+* `period` duration
+    Period is the length of each interval.
+    It can be negative, indicating the start and stop boundaries are reversed.
+    Defaults to the value of the `every` duration.
+* `offset` duration
+    Offset is the offset duration relative to the location offset.
+    It can be negative, indicating that the offset goes backwards in time.
+    Defaults to aligning with the `now` option time.
+* `filter` function
+    Filter accepts an interval object and returns a boolean value.
+    Each potential interval is passed to the filter function, when the function returns false, that interval is excluded from the set of intervals.
+    Defaults to include all intervals.
+
+Examples:
+
+    intervals(every:1h)                        // 1 hour intervals
+    intervals(every:1h, period:2h)             // 2 hour long intervals every 1 hour
+    intervals(every:1h, period:2h, offset:30m) // 2 hour long intervals every 1 hour starting at 30m past the hour
+    intervals(every:1w, offset:1d)             // 1 week intervals starting on Monday (by default weeks start on Sunday)
+    intervals(every:1d, period:-1h)            // the hour from 11PM - 12AM every night
+
+Examples using a predicate:
+
+    // 1 day intervals excluding weekends
+    intervals(
+        every:1d,
+        filter: (interval) => !(weekday(time: interval.start) in [Sunday, Saturday]),
+    )
+    // Work hours from 9AM - 5PM on work days.
+    intervals(
+        every:1d,
+        period:8h,
+        offset:9h,
+        filter:(interval) => !(weekday(time: interval.start) in [Sunday, Saturday]),
+    )
+
+
+[IMPL#XXX](https://github.com/influxdata/platform/query/issues/XXX) Implement intervals function
+
 
 ## Query engine
 
@@ -1238,7 +1229,7 @@ Range has the following properties:
     Specifies the oldest time to be included in the results
 * `stop` duration or timestamp
     Specifies the exclusive newest time to be included in the results.
-    Defaults to the value of the `now()` option.
+    Defaults to the value of the `now` option time.
 
 #### Rename 
 
@@ -1361,27 +1352,20 @@ A single input record will be placed into zero or more output tables, depending 
 
 Window has the following properties:
 
-QUESTION: Should we drop the `every`, `period` and `offset` parameters and just use interval comprehensions for everything?
-I think we should keep them since it makes the happy path more readable.
-
-These are equivalent, but without understanding interval comprehensions the second line is not as clear.
-```
- window(every:1h)
- window(intervals:{1h})
-```
-
 * `every` duration
     Duration of time between windows.
     Defaults to `period`'s value
     One of `every`, `period` or `intervals` must be provided.
 * `period` duration
     Duration of the window.
+    Period is the length of each interval.
+    It can be negative, indicating the start and stop boundaries are reversed.
     Defaults to `every`'s value
     One of `every`, `period` or `intervals` must be provided.
 * `offset` time
-    The time used to align the window boundary stop time.
+    The offset duration relative to the location offset.
+    It can be negative, indicating that the offset goes backwards in time.
     The default aligns the window boundaries to line up with the `now` option time.
-    The default value is the difference between the time zone epoch time and the `now` time.
 * `intervals` interval generator
     A set of intervals to be used as the windows.
     One of `every`, `period` or `intervals` must be provided.
@@ -1399,7 +1383,7 @@ These are equivalent, but without understanding interval comprehensions the seco
 Examples:
 
     window(every:1h) // window the data into 1 hour intervals
-    window(intervals: {1d:8h:9h}) // window the data into 8 hour intervals starting at 9AM every day.
+    window(intervals: intervals(every:1d, period:8h, offset:9h)) // window the data into 8 hour intervals starting at 9AM every day.
 
 #### Collate
 
@@ -1934,4 +1918,5 @@ Example error encoding with after a valid table has already been encoded.
 ```
 
 [IMPL#327](https://github.com/influxdata/platform/query/issues/327) Finalize csv encoding specification
+
 
