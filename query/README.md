@@ -119,6 +119,35 @@ Example: `from(db:"telegraf")`
 * `hosts` array of strings
     `from(db:"telegraf", hosts:["host1", "host2"])`
 
+#### collate
+
+Collects values stored vertically (column-wise) in a stream and aligns them horizontally (row-wise) into logical sets.
+
+##### options
+
+* `rowKey` array of strings
+    List of columns used to uniquely identify a row.
+* `colKey' array of strings
+    List of columns used to identify the set of columns to create.
+* `valueCol` column that contains the value to be collated
+    The value from each vertical entry that will be copied into a row in the collated result.
+
+
+Example:
+
+from(db: "telegraf")
+  |> range(start:-30m)
+  |> filter(fn: (r) => r._measurement == "cpu")
+  |> group(by: ["host"])
+  |> collate(rowKey: ["_time"], columnKey: ["_field"], valueCol: "_value")
+
+The output is constructed as follows:
+1. A new row is created for each unique value identified in the input by the rowKey parameter.
+2. The set of columns for the new row is the same as the input table, excluding the valueCol.
+3. A set of value columns are added to the row for each unique value identified in the input by the columnKey parameter.
+4. For each rowKey, columnKey pair, the appropriate value is determined from the input table by the valueCol. If no value is found,
+   the value is set to `null`.
+
 #### count
 
 Counts the number of results

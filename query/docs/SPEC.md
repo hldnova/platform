@@ -1169,6 +1169,34 @@ Window has the following properties:
 
 #### Collate
 
+Collate collects values stored vertically (column-wise) in a stream and aligns them horizontally (row-wise) into logical sets.  The primary use-case
+for collate is to collect common fields on a series into a single row for processing, but it may have other applications
+such as combining aggregate computations into a single row.
+
+The group key of the resulting table will be the same as the input tables, meaning that this function may be applied
+either before or after a grouping and the result will be the same.
+
+The row key should have a 1:1 mapping for any input row to an output row.  In the case where more than one value is
+identified for the same row+column pair in the output, the last value encountered in the stream is taken for the result.
+
+Collate has the following properties:
+
+* `rowKey` array of strings
+    List of columns used to uniquely identify a row.
+* `colKey' array of strings
+    List of columns used to identify the set of columns to create.
+* `valueCol` column that contains the value to be collated
+    The value from each vertical entry that will be copied into a row in the collated result. valueCol must not
+    be a column in the table group key.
+
+
+The output is constructed as follows:
+1. A new row is created for each unique value identified in the input by the rowKey parameter.
+2. The set of columns for the new row is the same as the input table, excluding the valueCol.
+3. A set of value columns are added to the row for each unique value identified in the input by the columnKey parameter.
+4. For each rowKey, columnKey pair, the appropriate value is determined from the input table by the valueCol. If no value is found,
+   the value is set to `null`.
+
 [IMPL#323](https://github.com/influxdata/platform/query/issues/323) Add function that makes it easy to get all fields as columns given a set of tags.
 
 #### Join
