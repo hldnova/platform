@@ -1197,6 +1197,7 @@ The output is constructed as follows:
 4. For each rowKey, columnKey pair, the appropriate value is determined from the input table by the valueCol. If no value is found,
    the value is set to `null`.
 
+[IMPL#353](https://github.com/influxdata/platform/issues/353) Null value support is required to complete this function as specified.
 [IMPL#323](https://github.com/influxdata/platform/query/issues/323) Add function that makes it easy to get all fields as columns given a set of tags.
 
 #### Join
