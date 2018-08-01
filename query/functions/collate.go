@@ -18,29 +18,53 @@ import (
 const CollateKind = "collate"
 
 type CollateOpSpec struct {
-	onething int
+	RowKey   []string `json:"row_key"`
+	ColKey   []string `json:"col_key"`
+	ValueCol string   `json:"value_col"`
 }
 
-var collateSignature = semantic.FunctionSignature{
-	Params: map[string]semantic.Type{
-		"tables": semantic.Object,
-		"on":     semantic.NewArrayType(semantic.String),
-		"method": semantic.String,
-	},
-	ReturnType:   query.TableObjectType,
-	PipeArgument: "tables",
-}
+var collateSignature = query.DefaultFunctionSignature()
 
 func init() {
+	collateSignature.Params["rowKey"] = semantic.Array
+	collateSignature.Params["colKey"] = semantic.Array
+	collateSignature.Params["ValueCol"] = semantic.String
+
 	query.RegisterFunction(CollateKind, createCollateOpSpec, collateSignature)
 	query.RegisterOpSpec(CollateKind, newCollateOp)
-	//TODO(nathanielc): Allow for other types of join implementations
-	plan.RegisterProcedureSpec(MergeJoinKind, newCollateProcedure, JoinKind)
-	execute.RegisterTransformation(MergeJoinKind, createCollateTransformation)
+
+	plan.RegisterProcedureSpec(CollateKind, newCollateProcedure, CollateKind)
+	execute.RegisterTransformation(CollateKind, createCollateTransformation)
 }
 
 func createCollateOpSpec(args query.Arguments, a *query.Administration) (query.OperationSpec, error) {
 	spec := &CollateOpSpec{}
+
+	array, err := args.GetRequiredArray("rowKey", semantic.String)
+	if err != nil {
+		return nil, err
+	}
+
+	spec.RowKey, err = interpreter.ToStringArray(array)
+	if err != nil {
+		return nil, err
+	}
+
+	array, err = args.GetRequiredArray("colKey", semantic.String)
+	if err != nil {
+		return nil, err
+	}
+
+	spec.ColKey, err = interpreter.ToStringArray(array)
+	if err != nil {
+		return nil, err
+	}
+
+	valueCol, err := args.GetRequiredString("ValueCol")
+	if err != nil {
+		return nil, err
+	}
+	spec.ValueCol = valueCol
 
 	return spec, nil
 }
@@ -54,6 +78,9 @@ func (s *CollateOpSpec) Kind() query.OperationKind {
 }
 
 type CollateProcedureSpec struct {
+	RowKey   []string
+	ColKey   []string
+	ValueCol string
 }
 
 func newCollateProcedure(qs query.OperationSpec, pa plan.Administration) (plan.ProcedureSpec, error) {
@@ -62,24 +89,27 @@ func newCollateProcedure(qs query.OperationSpec, pa plan.Administration) (plan.P
 		return nil, fmt.Errorf("invalid spec type %T", qs)
 	}
 
-	p := &CollateProcedureSpec{}
+	p := &CollateProcedureSpec{
+		RowKey:   spec.RowKey,
+		ColKey:   spec.ColKey,
+		ValueCol: spec.ValueCol,
+	}
 
 	return p, nil
 }
 
 func (s *CollateProcedureSpec) Kind() plan.ProcedureKind {
-	return MergeJoinKind
+	return CollateKind
 }
 func (s *CollateProcedureSpec) Copy() plan.ProcedureSpec {
 	ns := new(CollateProcedureSpec)
-
+	ns.RowKey = make([]string, len(s.RowKey))
+	copy(ns.RowKey, s.RowKey)
+	ns.ColKey = make([]string, len(s.ColKey))
+	copy(ns.ColKey, s.ColKey)
+	ns.ValueCol = s.ValueCol
 	return ns
 }
-
-// TODO: do I need this?
-//func (s *CollateProcedureSpec) ParentChanged(old, new plan.ProcedureID) {
-//
-//}
 
 func createCollateTransformation(id execute.DatasetID, mode execute.AccumulationMode, spec plan.ProcedureSpec, a execute.Administration) (execute.Transformation, execute.Dataset, error) {
 	s, ok := spec.(*CollateProcedureSpec)
@@ -96,22 +126,22 @@ func createCollateTransformation(id execute.DatasetID, mode execute.Accumulation
 type collateTransformation struct {
 	d     execute.Dataset
 	cache execute.TableBuilderCache
+	spec  CollateProcedureSpec
 }
 
 func NewCollateTransformation(d execute.Dataset, cache execute.TableBuilderCache, spec *CollateProcedureSpec) *collateTransformation {
 	t := &collateTransformation{
 		d:     d,
 		cache: cache,
+		spec:  *spec,
 	}
-
 	return t
 }
 
 func (t *collateTransformation) RetractTable(id execute.DatasetID, key query.GroupKey) error {
-	panic("not implemented")
+	return t.d.RetractTable(key)
 }
 
-// Process adds a table from an incoming stream to the Join operation's data cache
 func (t *collateTransformation) Process(id execute.DatasetID, tbl query.Table) error {
 
 }
