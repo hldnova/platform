@@ -133,7 +133,7 @@ func (a *Allocator) AppendUInts(slice []uint64, vs ...uint64) []uint64 {
 	return s
 }
 
-func (a *Allocator) GrowUints(slice []uint64, n int) []uint64 {
+func (a *Allocator) GrowUInts(slice []uint64, n int) []uint64 {
 	newCap := len(slice) + n
 	if newCap < cap(slice) {
 		return slice[:newCap]
@@ -224,6 +224,20 @@ func (a *Allocator) AppendTimes(slice []Time, vs ...Time) []Time {
 		return append(slice, vs...)
 	}
 	s := append(slice, vs...)
+	diff := cap(s) - cap(slice)
+	a.account(diff, timeSize)
+	return s
+}
+
+func (a *Allocator) GrowTimes(slice []Time, n int) []Time {
+	newCap := len(slice) + n
+	if newCap < cap(slice) {
+		return slice[:newCap]
+	}
+	// grow capacity same way as built-in append
+	newCap = newCap*3/2 + 1
+	s := make([]Time, newCap)
+	copy(s, slice)
 	diff := cap(s) - cap(slice)
 	a.account(diff, timeSize)
 	return s
