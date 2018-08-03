@@ -16,7 +16,7 @@ import (
 	"github.com/influxdata/platform/query/values"
 	"github.com/influxdata/platform/task/backend"
 	"github.com/influxdata/platform/task/backend/executor"
-	"go.uber.org/zap"
+	"go.uber.org/zap/zaptest"
 )
 
 type fakeQueryService struct {
@@ -179,20 +179,20 @@ type system struct {
 	ex   backend.Executor
 }
 
-type createSysFn func() *system
+type createSysFn func(t *testing.T) *system
 
-func createAsyncSystem() *system {
+func createAsyncSystem(t *testing.T) *system {
 	svc := newFakeQueryService()
 	st := backend.NewInMemStore()
 	return &system{
 		name: "AsyncExecutor",
 		svc:  svc,
 		st:   st,
-		ex:   executor.NewAsyncQueryServiceExecutor(zap.NewNop(), svc, st),
+		ex:   executor.NewAsyncQueryServiceExecutor(zaptest.NewLogger(t), svc, st),
 	}
 }
 
-func createSyncSystem() *system {
+func createSyncSystem(t *testing.T) *system {
 	svc := newFakeQueryService()
 	st := backend.NewInMemStore()
 	return &system{
@@ -200,7 +200,7 @@ func createSyncSystem() *system {
 		svc:  svc,
 		st:   st,
 		ex: executor.NewQueryServiceExecutor(
-			zap.NewNop(),
+			zaptest.NewLogger(t),
 			query.QueryServiceBridge{
 				AsyncQueryService: svc,
 			},
@@ -225,7 +225,7 @@ const testScript = `option task = {
 		from(bucket: "one") |> toHTTP(url: "http://example.com")`
 
 func testExecutorQuerySuccess(t *testing.T, fn createSysFn) {
-	sys := fn()
+	sys := fn(t)
 	t.Run(sys.name+"/QuerySuccess", func(t *testing.T) {
 		tid, err := sys.st.CreateTask(context.Background(), platform.ID("org"), platform.ID("user"), testScript)
 		if err != nil {
@@ -275,7 +275,7 @@ func testExecutorQuerySuccess(t *testing.T, fn createSysFn) {
 }
 
 func testExecutorQueryFailure(t *testing.T, fn createSysFn) {
-	sys := fn()
+	sys := fn(t)
 	t.Run(sys.name+"/QueryFail", func(t *testing.T) {
 		tid, err := sys.st.CreateTask(context.Background(), platform.ID("org"), platform.ID("user"), testScript)
 		if err != nil {
@@ -301,7 +301,7 @@ func testExecutorQueryFailure(t *testing.T, fn createSysFn) {
 }
 
 func testExecutorPromiseCancel(t *testing.T, fn createSysFn) {
-	sys := fn()
+	sys := fn(t)
 	t.Run(sys.name+"/PromiseCancel", func(t *testing.T) {
 		tid, err := sys.st.CreateTask(context.Background(), platform.ID("org"), platform.ID("user"), testScript)
 		if err != nil {
@@ -326,7 +326,7 @@ func testExecutorPromiseCancel(t *testing.T, fn createSysFn) {
 }
 
 func testExecutorServiceError(t *testing.T, fn createSysFn) {
-	sys := fn()
+	sys := fn(t)
 	t.Run(sys.name+"/ServiceError", func(t *testing.T) {
 		tid, err := sys.st.CreateTask(context.Background(), platform.ID("org"), platform.ID("user"), testScript)
 		if err != nil {

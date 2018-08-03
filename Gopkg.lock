@@ -864,7 +864,7 @@
   version = "v1.1.0"
 
 [[projects]]
-  digest = "1:973def4d3d414173bbc236b72680b76ec9509a62433b1814fcfd70c0386e272f"
+  digest = "1:ec84c73fae08866389c8ffb608073553cdbe0eea4c3236fddbe33a2f114e2453"
   name = "go.uber.org/zap"
   packages = [
     ".",
@@ -872,7 +872,9 @@
     "internal/bufferpool",
     "internal/color",
     "internal/exit",
+    "internal/ztest",
     "zapcore",
+    "zaptest",
     "zaptest/observer",
   ]
   pruneopts = "UT"
@@ -1105,6 +1107,7 @@
     "github.com/uber/jaeger-client-go/log",
     "github.com/uber/jaeger-lib/metrics",
     "go.uber.org/zap",
+    "go.uber.org/zap/zaptest",
     "go.uber.org/zap/zaptest/observer",
     "golang.org/x/net/context",
     "golang.org/x/oauth2",

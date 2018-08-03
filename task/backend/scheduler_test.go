@@ -13,12 +13,13 @@ import (
 	"github.com/influxdata/platform/task/backend"
 	"github.com/influxdata/platform/task/mock"
 	"github.com/influxdata/platform/task/options"
+	"go.uber.org/zap/zaptest"
 )
 
 func TestScheduler_EveryValidation(t *testing.T) {
 	d := mock.NewDesiredState()
 	e := mock.NewExecutor()
-	o := backend.NewScheduler(d, e, backend.NopLogWriter{}, 5)
+	o := backend.NewScheduler(d, e, backend.NopLogWriter{}, 5, backend.WithLogger(zaptest.NewLogger(t)))
 	task := &backend.StoreTask{
 		ID: platform.ID{1},
 	}
@@ -48,7 +49,7 @@ func TestScheduler_EveryValidation(t *testing.T) {
 func TestScheduler_StartScriptOnClaim(t *testing.T) {
 	d := mock.NewDesiredState()
 	e := mock.NewExecutor()
-	o := backend.NewScheduler(d, e, backend.NopLogWriter{}, 5)
+	o := backend.NewScheduler(d, e, backend.NopLogWriter{}, 5, backend.WithLogger(zaptest.NewLogger(t)))
 
 	task := &backend.StoreTask{
 		ID: platform.ID{1},
@@ -80,7 +81,7 @@ func TestScheduler_StartScriptOnClaim(t *testing.T) {
 func TestScheduler_CreateRunOnTick(t *testing.T) {
 	d := mock.NewDesiredState()
 	e := mock.NewExecutor()
-	o := backend.NewScheduler(d, e, backend.NopLogWriter{}, 5)
+	o := backend.NewScheduler(d, e, backend.NopLogWriter{}, 5, backend.WithLogger(zaptest.NewLogger(t)))
 
 	task := &backend.StoreTask{
 		ID: platform.ID{1},
@@ -123,7 +124,7 @@ func TestScheduler_CreateRunOnTick(t *testing.T) {
 func TestScheduler_Release(t *testing.T) {
 	d := mock.NewDesiredState()
 	e := mock.NewExecutor()
-	o := backend.NewScheduler(d, e, backend.NopLogWriter{}, 5)
+	o := backend.NewScheduler(d, e, backend.NopLogWriter{}, 5, backend.WithLogger(zaptest.NewLogger(t)))
 
 	task := &backend.StoreTask{
 		ID: platform.ID{1},
@@ -153,7 +154,7 @@ func TestScheduler_RunLog(t *testing.T) {
 	d := mock.NewDesiredState()
 	e := mock.NewExecutor()
 	rl := backend.NewInMemRunReaderWriter()
-	s := backend.NewScheduler(d, e, rl, 5)
+	s := backend.NewScheduler(d, e, rl, 5, backend.WithLogger(zaptest.NewLogger(t)))
 
 	// Claim a task that starts later.
 	task := &backend.StoreTask{
@@ -283,7 +284,7 @@ func TestScheduler_RunLog(t *testing.T) {
 func TestScheduler_Metrics(t *testing.T) {
 	d := mock.NewDesiredState()
 	e := mock.NewExecutor()
-	s := backend.NewScheduler(d, e, backend.NopLogWriter{}, 5)
+	s := backend.NewScheduler(d, e, backend.NopLogWriter{}, 5, backend.WithLogger(zaptest.NewLogger(t)))
 
 	reg := prom.NewRegistry()
 	// PrometheusCollector isn't part of the Scheduler interface. Yet.
