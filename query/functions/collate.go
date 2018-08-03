@@ -2,9 +2,7 @@ package functions
 
 import (
 	"fmt"
-	"math"
-	"sort"
-	"sync"
+	"strings"
 
 	"github.com/influxdata/platform/query"
 	"github.com/influxdata/platform/query/execute"
@@ -15,30 +13,30 @@ import (
 	"github.com/pkg/errors"
 )
 
-const CollateKind = "collate"
+const PivotKind = "pivot"
 
-type CollateOpSpec struct {
+type PivotOpSpec struct {
 	RowKey   []string `json:"row_key"`
 	ColKey   []string `json:"col_key"`
 	ValueCol string   `json:"value_col"`
 }
 
-var collateSignature = query.DefaultFunctionSignature()
+var pivotSignature = query.DefaultFunctionSignature()
 
 func init() {
-	collateSignature.Params["rowKey"] = semantic.Array
-	collateSignature.Params["colKey"] = semantic.Array
-	collateSignature.Params["ValueCol"] = semantic.String
+	pivotSignature.Params["rowKey"] = semantic.Array
+	pivotSignature.Params["colKey"] = semantic.Array
+	pivotSignature.Params["ValueCol"] = semantic.String
 
-	query.RegisterFunction(CollateKind, createCollateOpSpec, collateSignature)
-	query.RegisterOpSpec(CollateKind, newCollateOp)
+	query.RegisterFunction(PivotKind, createPivotOpSpec, pivotSignature)
+	query.RegisterOpSpec(PivotKind, newPivotOp)
 
-	plan.RegisterProcedureSpec(CollateKind, newCollateProcedure, CollateKind)
-	execute.RegisterTransformation(CollateKind, createCollateTransformation)
+	plan.RegisterProcedureSpec(PivotKind, newPivotProcedure, PivotKind)
+	execute.RegisterTransformation(PivotKind, createPivotTransformation)
 }
 
-func createCollateOpSpec(args query.Arguments, a *query.Administration) (query.OperationSpec, error) {
-	spec := &CollateOpSpec{}
+func createPivotOpSpec(args query.Arguments, a *query.Administration) (query.OperationSpec, error) {
+	spec := &PivotOpSpec{}
 
 	array, err := args.GetRequiredArray("rowKey", semantic.String)
 	if err != nil {
@@ -69,27 +67,27 @@ func createCollateOpSpec(args query.Arguments, a *query.Administration) (query.O
 	return spec, nil
 }
 
-func newCollateOp() query.OperationSpec {
-	return new(CollateOpSpec)
+func newPivotOp() query.OperationSpec {
+	return new(PivotOpSpec)
 }
 
-func (s *CollateOpSpec) Kind() query.OperationKind {
-	return CollateKind
+func (s *PivotOpSpec) Kind() query.OperationKind {
+	return PivotKind
 }
 
-type CollateProcedureSpec struct {
+type PivotProcedureSpec struct {
 	RowKey   []string
 	ColKey   []string
 	ValueCol string
 }
 
-func newCollateProcedure(qs query.OperationSpec, pa plan.Administration) (plan.ProcedureSpec, error) {
-	spec, ok := qs.(*CollateOpSpec)
+func newPivotProcedure(qs query.OperationSpec, pa plan.Administration) (plan.ProcedureSpec, error) {
+	spec, ok := qs.(*PivotOpSpec)
 	if !ok {
 		return nil, fmt.Errorf("invalid spec type %T", qs)
 	}
 
-	p := &CollateProcedureSpec{
+	p := &PivotProcedureSpec{
 		RowKey:   spec.RowKey,
 		ColKey:   spec.ColKey,
 		ValueCol: spec.ValueCol,
@@ -98,11 +96,11 @@ func newCollateProcedure(qs query.OperationSpec, pa plan.Administration) (plan.P
 	return p, nil
 }
 
-func (s *CollateProcedureSpec) Kind() plan.ProcedureKind {
-	return CollateKind
+func (s *PivotProcedureSpec) Kind() plan.ProcedureKind {
+	return PivotKind
 }
-func (s *CollateProcedureSpec) Copy() plan.ProcedureSpec {
-	ns := new(CollateProcedureSpec)
+func (s *PivotProcedureSpec) Copy() plan.ProcedureSpec {
+	ns := new(PivotProcedureSpec)
 	ns.RowKey = make([]string, len(s.RowKey))
 	copy(ns.RowKey, s.RowKey)
 	ns.ColKey = make([]string, len(s.ColKey))
@@ -111,26 +109,26 @@ func (s *CollateProcedureSpec) Copy() plan.ProcedureSpec {
 	return ns
 }
 
-func createCollateTransformation(id execute.DatasetID, mode execute.AccumulationMode, spec plan.ProcedureSpec, a execute.Administration) (execute.Transformation, execute.Dataset, error) {
-	s, ok := spec.(*CollateProcedureSpec)
+func createPivotTransformation(id execute.DatasetID, mode execute.AccumulationMode, spec plan.ProcedureSpec, a execute.Administration) (execute.Transformation, execute.Dataset, error) {
+	s, ok := spec.(*PivotProcedureSpec)
 	if !ok {
 		return nil, nil, fmt.Errorf("invalid spec type %T", spec)
 	}
 
 	cache := execute.NewTableBuilderCache(a.Allocator())
 	d := execute.NewDataset(id, mode, cache)
-	t := NewCollateTransformation(d, cache, s)
+	t := NewPivotTransformation(d, cache, s)
 	return t, d, nil
 }
 
-type collateTransformation struct {
+type pivotTransformation struct {
 	d     execute.Dataset
 	cache execute.TableBuilderCache
-	spec  CollateProcedureSpec
+	spec  PivotProcedureSpec
 }
 
-func NewCollateTransformation(d execute.Dataset, cache execute.TableBuilderCache, spec *CollateProcedureSpec) *collateTransformation {
-	t := &collateTransformation{
+func NewPivotTransformation(d execute.Dataset, cache execute.TableBuilderCache, spec *PivotProcedureSpec) *pivotTransformation {
+	t := &pivotTransformation{
 		d:     d,
 		cache: cache,
 		spec:  *spec,
@@ -138,22 +136,85 @@ func NewCollateTransformation(d execute.Dataset, cache execute.TableBuilderCache
 	return t
 }
 
-func (t *collateTransformation) RetractTable(id execute.DatasetID, key query.GroupKey) error {
+func (t *pivotTransformation) RetractTable(id execute.DatasetID, key query.GroupKey) error {
 	return t.d.RetractTable(key)
 }
 
-func (t *collateTransformation) Process(id execute.DatasetID, tbl query.Table) error {
+func (t *pivotTransformation) Process(id execute.DatasetID, tbl query.Table) error {
 
+	colsToRemove := make(map[string]bool)
+	colsToRemove[t.spec.ValueCol] = true
+	for _, v := range t.spec.ColKey {
+		colsToRemove[v] = false
+	}
+
+	cols := make([]query.ColMeta, 0, len(tbl.Cols()))
+	keyCols := make([]query.ColMeta, 0, len(tbl.Key().Cols()))
+	keyValues := make([]values.Value, 0, len(tbl.Key().Cols()))
+	newIDX := 0
+	colMap := make([]int, 0, len(tbl.Cols()))
+
+	for colIDX, v := range tbl.Cols() {
+		if _, ok := colsToRemove[v.Label]; !ok {
+			cols = append(cols, tbl.Cols()[colIDX])
+			colMap[colIDX] = newIDX
+			newIDX++
+			if tbl.Key().HasCol(v.Label) {
+				keyCols = append(keyCols, tbl.Cols()[colIDX])
+				keyValues = append(keyValues, tbl.Key().Value(colIDX))
+			}
+		} else {
+			colsToRemove[v.Label] = true
+		}
+	}
+
+	for k, v := range colsToRemove {
+		if !v {
+			return fmt.Errorf("specified column does not exist in table: %v", k)
+		}
+	}
+
+	for _, v := range t.spec.RowKey {
+		if !execute.HasCol(v, tbl.Cols()) {
+			return fmt.Errorf("specified column does not exist in table: %v", v)
+		}
+	}
+
+	newKey := execute.NewGroupKey(keyCols, keyValues)
+	builder, created := t.cache.TableBuilder(newKey)
+	if !created {
+		return fmt.Errorf("pivot found duplicate table with key %v", tbl.Key())
+	}
+
+	for _, c := range cols {
+		builder.AddCol(c)
+	}
+
+	// at this point, we know: the group key, the existing columns we'll keep. We have a colMap
+	// so we can quickly copy over values that aren't part of the pivot.
+	// we know the pivot column
+
+	keyColPrefix := strings.Join(t.spec.ColKey, "_")
+
+	tbl.Do(func(cr query.ColReader) error {
+		cr.Strings()
+		return nil
+	})
+
+	execute.AppendKeyValues(newKey, builder)
+	builder.AppendBools()
+	return nil
 }
 
-func (t *collateTransformation) UpdateWatermark(id execute.DatasetID, mark execute.Time) error {
+func (t *pivotTransformation) UpdateWatermark(id execute.DatasetID, mark execute.Time) error {
 	return t.d.UpdateWatermark(mark)
 }
 
-func (t *collateTransformation) UpdateProcessingTime(id execute.DatasetID, pt execute.Time) error {
+func (t *pivotTransformation) UpdateProcessingTime(id execute.DatasetID, pt execute.Time) error {
 	return t.d.UpdateProcessingTime(pt)
 }
 
-func (t *collateTransformation) Finish(id execute.DatasetID, err error) {
+func (t *pivotTransformation) Finish(id execute.DatasetID, err error) {
+
 	t.d.Finish(err)
 }
