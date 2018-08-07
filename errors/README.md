@@ -34,7 +34,7 @@
 #### Creating/Updating an Error in errors package
        - Is the error needs to wrap with another error?
          like `errors.Wrap("a label", err)`
-         Yes? Create an error in withErr.go
+         Yes? Create an error in with_err.go
          * Append the Enum name in const
          * Append the label in withErrStr.
          * Append a NewFunc in the vars func
@@ -42,7 +42,7 @@
        
        - Is the error needs to wrap one or more value?
          like `fmt.Errof("The name %s already exist", name)`
-         Yes? Create an error in withValue.go
+         Yes? Create an error in with_value.go
          * Append the Enum name in const
          * Append the label format in withValueStr
          * Create the New func 

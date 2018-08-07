@@ -6,8 +6,8 @@ import (
 
 // errors with value
 const (
-	OrganizationNameAlreadyExist Type = baseWithValue + iota
-	UserNameAlreadyExist
+	OrganizationNameAlreadyExist Type = baseWithValue + iota // 40000
+	UserNameAlreadyExist         Type = 40001
 )
 
 type withValue struct {
@@ -15,17 +15,21 @@ type withValue struct {
 	Values []interface{} `json:"values"`
 }
 
-var withValueStr = []string{
-	"organization with name %s already exists",
-	"user with name %s already exists",
+var withValueStrMap = []string{
+	OrganizationNameAlreadyExist: "organization with name %s already exists",
+	UserNameAlreadyExist:         "user with name %s already exists",
 }
 
 func (e withValue) Error() string {
 	return fmt.Sprintf(e.typ.Reference(), e.Values...)
 }
 
-func (e withValue) Code() Type {
+func (e withValue) Type() Type {
 	return e.typ
+}
+
+func (e withValue) InnerErr() TypedError {
+	return nil
 }
 
 // NewOrganizationNameAlreadyExist wraps the OrganizationNameAlreadyExist with name.
@@ -40,7 +44,7 @@ func NewUserNameAlreadyExist(name string) TypedError {
 
 func errWithValue(typ Type) func(args ...interface{}) TypedError {
 	return func(args ...interface{}) TypedError {
-		return withValue{
+		return &withValue{
 			typ:    typ,
 			Values: args,
 		}
