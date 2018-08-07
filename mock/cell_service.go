@@ -1,9 +1,9 @@
-package mocks
+package mock
 
 import (
 	"context"
 
-	"github.com/influxdata/platform/chronograf/v2"
+	"github.com/influxdata/platform"
 )
 
 var _ platform.CellService = &CellService{}

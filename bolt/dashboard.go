@@ -4,29 +4,22 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
+	"strconv"
 
-	"github.com/coreos/bbolt"
+	bolt "github.com/coreos/bbolt"
 	"github.com/influxdata/platform"
 )
 
 var (
-	dashboardBucket = []byte("dashboardsv1")
+	dashboardV2Bucket = []byte("dashboardsv3")
 )
 
-func (c *Client) initializeDashboards(ctx context.Context, tx *bolt.Tx) error {
-	if _, err := tx.CreateBucketIfNotExists([]byte(dashboardBucket)); err != nil {
-		return err
-	}
-	return nil
-}
+var _ platform.DashboardService = (*Client)(nil)
 
-func (c *Client) setOrganizationOnDashboard(ctx context.Context, tx *bolt.Tx, d *platform.Dashboard) error {
-	o, err := c.findOrganizationByID(ctx, tx, d.OrganizationID)
-	if err != nil {
+func (c *Client) initializeDashboards(ctx context.Context, tx *bolt.Tx) error {
+	if _, err := tx.CreateBucketIfNotExists([]byte(dashboardV2Bucket)); err != nil {
 		return err
 	}
-	d.Organization = o.Name
 	return nil
 }
 
@@ -53,18 +46,13 @@ func (c *Client) FindDashboardByID(ctx context.Context, id platform.ID) (*platfo
 func (c *Client) findDashboardByID(ctx context.Context, tx *bolt.Tx, id platform.ID) (*platform.Dashboard, error) {
 	var d platform.Dashboard
 
-	v := tx.Bucket(dashboardBucket).Get(id)
+	v := tx.Bucket(dashboardV2Bucket).Get([]byte(id))
 
 	if len(v) == 0 {
-		// TODO: Make standard error
-		return nil, fmt.Errorf("dashboard not found")
+		return nil, platform.ErrDashboardNotFound
 	}
 
 	if err := json.Unmarshal(v, &d); err != nil {
-		return nil, err
-	}
-
-	if err := c.setOrganizationOnDashboard(ctx, tx, &d); err != nil {
 		return nil, err
 	}
 
@@ -72,8 +60,6 @@ func (c *Client) findDashboardByID(ctx context.Context, tx *bolt.Tx, id platform
 }
 
 // FindDashboard retrieves a dashboard using an arbitrary dashboard filter.
-// Filters using ID, or OrganizationID and dashboard Name should be efficient.
-// Other filters will do a linear scan across dashboards until it finds a match.
 func (c *Client) FindDashboard(ctx context.Context, filter platform.DashboardFilter) (*platform.Dashboard, error) {
 	if filter.ID != nil {
 		return c.FindDashboardByID(ctx, *filter.ID)
@@ -81,14 +67,6 @@ func (c *Client) FindDashboard(ctx context.Context, filter platform.DashboardFil
 
 	var d *platform.Dashboard
 	err := c.db.View(func(tx *bolt.Tx) error {
-		if filter.Organization != nil {
-			o, err := c.findOrganizationByName(ctx, tx, *filter.Organization)
-			if err != nil {
-				return err
-			}
-			filter.OrganizationID = &o.ID
-		}
-
 		filterFn := filterDashboardsFn(filter)
 		return c.forEachDashboard(ctx, tx, func(dash *platform.Dashboard) bool {
 			if filterFn(dash) {
@@ -104,7 +82,7 @@ func (c *Client) FindDashboard(ctx context.Context, filter platform.DashboardFil
 	}
 
 	if d == nil {
-		return nil, fmt.Errorf("dashboard not found")
+		return nil, platform.ErrDashboardNotFound
 	}
 
 	return d, nil
@@ -117,28 +95,10 @@ func filterDashboardsFn(filter platform.DashboardFilter) func(d *platform.Dashbo
 		}
 	}
 
-	if filter.OrganizationID != nil {
-		return func(d *platform.Dashboard) bool {
-			return bytes.Equal(d.OrganizationID, *filter.OrganizationID)
-		}
-	}
-
 	return func(d *platform.Dashboard) bool { return true }
 }
 
-// FindDashboardsByOrganizationID retrieves all dashboards that belong to a particular organization ID.
-func (c *Client) FindDashboardsByOrganizationID(ctx context.Context, orgID platform.ID) ([]*platform.Dashboard, int, error) {
-	return c.FindDashboards(ctx, platform.DashboardFilter{OrganizationID: &orgID})
-}
-
-// FindDashboardsByOrganizationName retrieves all dashboards that belong to a particular organization.
-func (c *Client) FindDashboardsByOrganizationName(ctx context.Context, org string) ([]*platform.Dashboard, int, error) {
-	return c.FindDashboards(ctx, platform.DashboardFilter{Organization: &org})
-}
-
 // FindDashboards retrives all dashboards that match an arbitrary dashboard filter.
-// Filters using ID, or OrganizationID and dashboard Name should be efficient.
-// Other filters will do a linear scan across all dashboards searching for a match.
 func (c *Client) FindDashboards(ctx context.Context, filter platform.DashboardFilter) ([]*platform.Dashboard, int, error) {
 	if filter.ID != nil {
 		d, err := c.FindDashboardByID(ctx, *filter.ID)
@@ -168,13 +128,6 @@ func (c *Client) FindDashboards(ctx context.Context, filter platform.DashboardFi
 
 func (c *Client) findDashboards(ctx context.Context, tx *bolt.Tx, filter platform.DashboardFilter) ([]*platform.Dashboard, error) {
 	ds := []*platform.Dashboard{}
-	if filter.Organization != nil {
-		o, err := c.findOrganizationByName(ctx, tx, *filter.Organization)
-		if err != nil {
-			return nil, err
-		}
-		filter.OrganizationID = &o.ID
-	}
 
 	filterFn := filterDashboardsFn(filter)
 	err := c.forEachDashboard(ctx, tx, func(d *platform.Dashboard) bool {
@@ -194,20 +147,11 @@ func (c *Client) findDashboards(ctx context.Context, tx *bolt.Tx, filter platfor
 // CreateDashboard creates a platform dashboard and sets d.ID.
 func (c *Client) CreateDashboard(ctx context.Context, d *platform.Dashboard) error {
 	return c.db.Update(func(tx *bolt.Tx) error {
-		if len(d.OrganizationID) == 0 {
-			o, err := c.findOrganizationByName(ctx, tx, d.Organization)
-			if err != nil {
-				return err
-			}
-			d.OrganizationID = o.ID
+		id, err := tx.Bucket(dashboardV2Bucket).NextSequence()
+		if err != nil {
+			return err
 		}
-
-		d.ID = c.IDGenerator.ID()
-
-		for i, cell := range d.Cells {
-			cell.ID = c.IDGenerator.ID()
-			d.Cells[i] = cell
-		}
+		d.ID = platform.ID(strconv.Itoa(int(id)))
 
 		return c.putDashboard(ctx, tx, d)
 	})
@@ -221,26 +165,22 @@ func (c *Client) PutDashboard(ctx context.Context, d *platform.Dashboard) error 
 }
 
 func (c *Client) putDashboard(ctx context.Context, tx *bolt.Tx, d *platform.Dashboard) error {
-	d.Organization = ""
 	v, err := json.Marshal(d)
 	if err != nil {
 		return err
 	}
-	if err := tx.Bucket(dashboardBucket).Put(d.ID, v); err != nil {
+	if err := tx.Bucket(dashboardV2Bucket).Put([]byte(d.ID), v); err != nil {
 		return err
 	}
-	return c.setOrganizationOnDashboard(ctx, tx, d)
+	return nil
 }
 
 // forEachDashboard will iterate through all dashboards while fn returns true.
 func (c *Client) forEachDashboard(ctx context.Context, tx *bolt.Tx, fn func(*platform.Dashboard) bool) error {
-	cur := tx.Bucket(dashboardBucket).Cursor()
+	cur := tx.Bucket(dashboardV2Bucket).Cursor()
 	for k, v := cur.First(); k != nil; k, v = cur.Next() {
 		d := &platform.Dashboard{}
 		if err := json.Unmarshal(v, d); err != nil {
-			return err
-		}
-		if err := c.setOrganizationOnDashboard(ctx, tx, d); err != nil {
 			return err
 		}
 		if !fn(d) {
@@ -276,11 +216,11 @@ func (c *Client) updateDashboard(ctx context.Context, tx *bolt.Tx, id platform.I
 		d.Name = *upd.Name
 	}
 
-	if err := c.putDashboard(ctx, tx, d); err != nil {
-		return nil, err
+	if upd.Cells != nil {
+		d.Cells = upd.Cells
 	}
 
-	if err := c.setOrganizationOnDashboard(ctx, tx, d); err != nil {
+	if err := c.putDashboard(ctx, tx, d); err != nil {
 		return nil, err
 	}
 
@@ -299,69 +239,5 @@ func (c *Client) deleteDashboard(ctx context.Context, tx *bolt.Tx, id platform.I
 	if err != nil {
 		return err
 	}
-	return tx.Bucket(dashboardBucket).Delete(id)
-}
-
-// AddDashboardCell adds a cell to a dashboard.
-func (c *Client) AddDashboardCell(ctx context.Context, dashboardID platform.ID, cell *platform.DashboardCell) error {
-	return c.db.Update(func(tx *bolt.Tx) error {
-		d, err := c.findDashboardByID(ctx, tx, dashboardID)
-		if err != nil {
-			return err
-		}
-		cell.ID = c.IDGenerator.ID()
-		d.Cells = append(d.Cells, *cell)
-		return c.putDashboard(ctx, tx, d)
-	})
-}
-
-// ReplaceDashboardCell updates a cell in a dashboard.
-func (c *Client) ReplaceDashboardCell(ctx context.Context, dashboardID platform.ID, dc *platform.DashboardCell) error {
-	return c.db.Update(func(tx *bolt.Tx) error {
-		d, err := c.findDashboardByID(ctx, tx, dashboardID)
-		if err != nil {
-			return err
-		}
-		idx := -1
-		for i, cell := range d.Cells {
-			if bytes.Equal(dc.ID, cell.ID) {
-				idx = i
-				break
-			}
-		}
-
-		if idx == -1 {
-			return fmt.Errorf("cell not found")
-		}
-
-		d.Cells[idx] = *dc
-
-		return c.putDashboard(ctx, tx, d)
-	})
-}
-
-// RemoveDashboardCell removes a cell from a dashboard.
-func (c *Client) RemoveDashboardCell(ctx context.Context, dashboardID platform.ID, cellID platform.ID) error {
-	return c.db.Update(func(tx *bolt.Tx) error {
-		d, err := c.findDashboardByID(ctx, tx, dashboardID)
-		if err != nil {
-			return err
-		}
-		idx := -1
-		for i, cell := range d.Cells {
-			if bytes.Equal(cellID, cell.ID) {
-				idx = i
-				break
-			}
-		}
-
-		if idx == -1 {
-			return fmt.Errorf("cell not found")
-		}
-
-		// Remove cell
-		d.Cells = append(d.Cells[:idx], d.Cells[idx+1:]...)
-
-		return c.putDashboard(ctx, tx, d)
-	})
+	return tx.Bucket(dashboardV2Bucket).Delete([]byte(id))
 }

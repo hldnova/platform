@@ -1,12 +1,13 @@
 package bolt
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"strconv"
 
 	bolt "github.com/coreos/bbolt"
-	"github.com/influxdata/platform/chronograf/v2"
+	"github.com/influxdata/platform"
 )
 
 var (
@@ -88,7 +89,7 @@ func (c *Client) FindCell(ctx context.Context, filter platform.CellFilter) (*pla
 func filterCellsFn(filter platform.CellFilter) func(d *platform.Cell) bool {
 	if filter.ID != nil {
 		return func(d *platform.Cell) bool {
-			return d.ID == *filter.ID
+			return bytes.Equal(d.ID, *filter.ID)
 		}
 	}
 

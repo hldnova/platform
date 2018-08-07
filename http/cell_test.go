@@ -1,4 +1,4 @@
-package server
+package http
 
 import (
 	"bytes"
@@ -10,13 +10,13 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/bouk/httprouter"
-	"github.com/influxdata/platform/chronograf/log"
-	"github.com/influxdata/platform/chronograf/mocks"
-	"github.com/influxdata/platform/chronograf/v2"
+	"github.com/google/go-cmp/cmp"
+	"github.com/influxdata/platform"
+	"github.com/influxdata/platform/mock"
+	"github.com/julienschmidt/httprouter"
 )
 
-func TestService_CellsV2(t *testing.T) {
+func TestService_handleGetCells(t *testing.T) {
 	type fields struct {
 		CellService platform.CellService
 	}
@@ -38,7 +38,7 @@ func TestService_CellsV2(t *testing.T) {
 		{
 			name: "get all cells",
 			fields: fields{
-				&mocks.CellService{
+				&mock.CellService{
 					FindCellsF: func(ctx context.Context, filter platform.CellFilter) ([]*platform.Cell, int, error) {
 						return []*platform.Cell{
 							{
@@ -63,18 +63,18 @@ func TestService_CellsV2(t *testing.T) {
 			args: args{},
 			wants: wants{
 				statusCode:  http.StatusOK,
-				contentType: "application/json",
+				contentType: "application/json; charset=utf-8",
 				body: `
 {
   "links": {
-    "self": "/chronograf/v2/cells"
+    "self": "/v2/cells"
   },
   "cells": [
     {
-      "id": "0",
+      "id": "30",
       "name": "hello",
       "links": {
-        "self": "/chronograf/v2/cells/0"
+        "self": "/v2/cells/30"
       },
       "visualization": {
         "type": "chronograf-v1",
@@ -102,10 +102,10 @@ func TestService_CellsV2(t *testing.T) {
       }
     },
     {
-      "id": "2",
+      "id": "32",
       "name": "example",
       "links": {
-        "self": "/chronograf/v2/cells/2"
+        "self": "/v2/cells/32"
       },
       "visualization": {
         "type": "empty"
@@ -118,7 +118,7 @@ func TestService_CellsV2(t *testing.T) {
 		{
 			name: "get all cells when there are none",
 			fields: fields{
-				&mocks.CellService{
+				&mock.CellService{
 					FindCellsF: func(ctx context.Context, filter platform.CellFilter) ([]*platform.Cell, int, error) {
 						return []*platform.Cell{}, 0, nil
 					},
@@ -127,11 +127,11 @@ func TestService_CellsV2(t *testing.T) {
 			args: args{},
 			wants: wants{
 				statusCode:  http.StatusOK,
-				contentType: "application/json",
+				contentType: "application/json; charset=utf-8",
 				body: `
 {
   "links": {
-    "self": "/chronograf/v2/cells"
+    "self": "/v2/cells"
   },
   "cells": []
 }`,
@@ -141,12 +141,8 @@ func TestService_CellsV2(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Service{
-				Store: &mocks.Store{
-					CellService: tt.fields.CellService,
-				},
-				Logger: log.New(log.DebugLevel),
-			}
+			h := NewCellHandler()
+			h.CellService = tt.fields.CellService
 
 			r := httptest.NewRequest("GET", "http://any.url", nil)
 
@@ -160,27 +156,27 @@ func TestService_CellsV2(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			s.CellsV2(w, r)
+			h.handleGetCells(w, r)
 
 			res := w.Result()
 			content := res.Header.Get("Content-Type")
 			body, _ := ioutil.ReadAll(res.Body)
 
 			if res.StatusCode != tt.wants.statusCode {
-				t.Errorf("%q. CellsV2() = %v, want %v", tt.name, res.StatusCode, tt.wants.statusCode)
+				t.Errorf("%q. handleGetCells() = %v, want %v", tt.name, res.StatusCode, tt.wants.statusCode)
 			}
 			if tt.wants.contentType != "" && content != tt.wants.contentType {
-				t.Errorf("%q. CellsV2() = %v, want %v", tt.name, content, tt.wants.contentType)
+				t.Errorf("%q. handleGetCells() = %v, want %v", tt.name, content, tt.wants.contentType)
 			}
 			if eq, _ := jsonEqual(string(body), tt.wants.body); tt.wants.body != "" && !eq {
-				t.Errorf("%q. CellsV2() = \n***%v***\n,\nwant\n***%v***", tt.name, string(body), tt.wants.body)
+				t.Errorf("%q. handleGetCells() = \n***%v***\n,\nwant\n***%v***", tt.name, string(body), tt.wants.body)
 			}
 
 		})
 	}
 }
 
-func TestService_CellIDV2(t *testing.T) {
+func TestService_handleGetCell(t *testing.T) {
 	type fields struct {
 		CellService platform.CellService
 	}
@@ -202,33 +198,29 @@ func TestService_CellIDV2(t *testing.T) {
 		{
 			name: "get a cell by id",
 			fields: fields{
-				&mocks.CellService{
+				&mock.CellService{
 					FindCellByIDF: func(ctx context.Context, id platform.ID) (*platform.Cell, error) {
-						if id == "2" {
-							return &platform.Cell{
-								CellContents: platform.CellContents{
-									ID:   platform.ID("2"),
-									Name: "example",
-								},
-							}, nil
-						}
-
-						return nil, fmt.Errorf("not found")
+						return &platform.Cell{
+							CellContents: platform.CellContents{
+								ID:   mustParseID("020f755c3c082000"),
+								Name: "example",
+							},
+						}, nil
 					},
 				},
 			},
 			args: args{
-				id: "2",
+				id: "020f755c3c082000",
 			},
 			wants: wants{
 				statusCode:  http.StatusOK,
-				contentType: "application/json",
+				contentType: "application/json; charset=utf-8",
 				body: `
 {
-  "id": "2",
+  "id": "020f755c3c082000",
   "name": "example",
   "links": {
-    "self": "/chronograf/v2/cells/2"
+    "self": "/v2/cells/020f755c3c082000"
   },
   "visualization": {
     "type": "empty"
@@ -240,36 +232,31 @@ func TestService_CellIDV2(t *testing.T) {
 		{
 			name: "not found",
 			fields: fields{
-				&mocks.CellService{
+				&mock.CellService{
 					FindCellByIDF: func(ctx context.Context, id platform.ID) (*platform.Cell, error) {
 						return nil, platform.ErrCellNotFound
 					},
 				},
 			},
 			args: args{
-				id: "2",
+				id: "020f755c3c082000",
 			},
 			wants: wants{
-				statusCode:  http.StatusNotFound,
-				contentType: "application/json",
-				body:        `{"code":404,"message":"cell not found"}`,
+				statusCode: http.StatusNotFound,
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Service{
-				Store: &mocks.Store{
-					CellService: tt.fields.CellService,
-				},
-				Logger: log.New(log.DebugLevel),
-			}
+			h := NewCellHandler()
+			h.CellService = tt.fields.CellService
 
 			r := httptest.NewRequest("GET", "http://any.url", nil)
 
-			r = r.WithContext(httprouter.WithParams(
-				context.Background(),
+			r = r.WithContext(context.WithValue(
+				context.TODO(),
+				httprouter.ParamsKey,
 				httprouter.Params{
 					{
 						Key:   "id",
@@ -279,26 +266,26 @@ func TestService_CellIDV2(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			s.CellIDV2(w, r)
+			h.handleGetCell(w, r)
 
 			res := w.Result()
 			content := res.Header.Get("Content-Type")
 			body, _ := ioutil.ReadAll(res.Body)
 
 			if res.StatusCode != tt.wants.statusCode {
-				t.Errorf("%q. CellIDV2() = %v, want %v", tt.name, res.StatusCode, tt.wants.statusCode)
+				t.Errorf("%q. handleGetCell() = %v, want %v", tt.name, res.StatusCode, tt.wants.statusCode)
 			}
 			if tt.wants.contentType != "" && content != tt.wants.contentType {
-				t.Errorf("%q. CellIDV2() = %v, want %v", tt.name, content, tt.wants.contentType)
+				t.Errorf("%q. handleGetCell() = %v, want %v", tt.name, content, tt.wants.contentType)
 			}
 			if eq, _ := jsonEqual(string(body), tt.wants.body); tt.wants.body != "" && !eq {
-				t.Errorf("%q. CellIDV2() = \n***%v***\n,\nwant\n***%v***", tt.name, string(body), tt.wants.body)
+				t.Errorf("%q. handleGetCell() = \n***%v***\n,\nwant\n***%v***", tt.name, string(body), tt.wants.body)
 			}
 		})
 	}
 }
 
-func TestService_NewCellV2(t *testing.T) {
+func TestService_handlePostCells(t *testing.T) {
 	type fields struct {
 		CellService platform.CellService
 	}
@@ -320,9 +307,9 @@ func TestService_NewCellV2(t *testing.T) {
 		{
 			name: "create a new cell",
 			fields: fields{
-				&mocks.CellService{
+				&mock.CellService{
 					CreateCellF: func(ctx context.Context, c *platform.Cell) error {
-						c.ID = "2"
+						c.ID = mustParseID("020f755c3c082000")
 						return nil
 					},
 				},
@@ -339,13 +326,13 @@ func TestService_NewCellV2(t *testing.T) {
 			},
 			wants: wants{
 				statusCode:  http.StatusCreated,
-				contentType: "application/json",
+				contentType: "application/json; charset=utf-8",
 				body: `
 {
-  "id": "2",
+  "id": "020f755c3c082000",
   "name": "hello",
   "links": {
-    "self": "/chronograf/v2/cells/2"
+    "self": "/v2/cells/020f755c3c082000"
   },
   "visualization": {
     "type": "chronograf-v1",
@@ -379,12 +366,8 @@ func TestService_NewCellV2(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Service{
-				Store: &mocks.Store{
-					CellService: tt.fields.CellService,
-				},
-				Logger: log.New(log.DebugLevel),
-			}
+			h := NewCellHandler()
+			h.CellService = tt.fields.CellService
 
 			b, err := json.Marshal(tt.args.cell)
 			if err != nil {
@@ -394,26 +377,26 @@ func TestService_NewCellV2(t *testing.T) {
 			r := httptest.NewRequest("GET", "http://any.url", bytes.NewReader(b))
 			w := httptest.NewRecorder()
 
-			s.NewCellV2(w, r)
+			h.handlePostCells(w, r)
 
 			res := w.Result()
 			content := res.Header.Get("Content-Type")
 			body, _ := ioutil.ReadAll(res.Body)
 
 			if res.StatusCode != tt.wants.statusCode {
-				t.Errorf("%q. CellIDV2() = %v, want %v", tt.name, res.StatusCode, tt.wants.statusCode)
+				t.Errorf("%q. handlePostCells() = %v, want %v", tt.name, res.StatusCode, tt.wants.statusCode)
 			}
 			if tt.wants.contentType != "" && content != tt.wants.contentType {
-				t.Errorf("%q. CellIDV2() = %v, want %v", tt.name, content, tt.wants.contentType)
+				t.Errorf("%q. handlePostCells() = %v, want %v", tt.name, content, tt.wants.contentType)
 			}
 			if eq, _ := jsonEqual(string(body), tt.wants.body); tt.wants.body != "" && !eq {
-				t.Errorf("%q. CellIDV2() = \n***%v***\n,\nwant\n***%v***", tt.name, string(body), tt.wants.body)
+				t.Errorf("%q. handlePostCells() = \n***%v***\n,\nwant\n***%v***", tt.name, string(body), tt.wants.body)
 			}
 		})
 	}
 }
 
-func TestService_RemoveCellV2(t *testing.T) {
+func TestService_handleDeleteCell(t *testing.T) {
 	type fields struct {
 		CellService platform.CellService
 	}
@@ -435,9 +418,9 @@ func TestService_RemoveCellV2(t *testing.T) {
 		{
 			name: "remove a cell by id",
 			fields: fields{
-				&mocks.CellService{
+				&mock.CellService{
 					DeleteCellF: func(ctx context.Context, id platform.ID) error {
-						if id == "2" {
+						if bytes.Equal(id, mustParseID("020f755c3c082000")) {
 							return nil
 						}
 
@@ -446,7 +429,7 @@ func TestService_RemoveCellV2(t *testing.T) {
 				},
 			},
 			args: args{
-				id: "2",
+				id: "020f755c3c082000",
 			},
 			wants: wants{
 				statusCode: http.StatusNoContent,
@@ -455,36 +438,31 @@ func TestService_RemoveCellV2(t *testing.T) {
 		{
 			name: "cell not found",
 			fields: fields{
-				&mocks.CellService{
+				&mock.CellService{
 					DeleteCellF: func(ctx context.Context, id platform.ID) error {
 						return platform.ErrCellNotFound
 					},
 				},
 			},
 			args: args{
-				id: "2",
+				id: "020f755c3c082000",
 			},
 			wants: wants{
-				statusCode:  http.StatusNotFound,
-				contentType: "application/json",
-				body:        `{"code":404,"message":"cell not found"}`,
+				statusCode: http.StatusNotFound,
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Service{
-				Store: &mocks.Store{
-					CellService: tt.fields.CellService,
-				},
-				Logger: log.New(log.DebugLevel),
-			}
+			h := NewCellHandler()
+			h.CellService = tt.fields.CellService
 
 			r := httptest.NewRequest("GET", "http://any.url", nil)
 
-			r = r.WithContext(httprouter.WithParams(
-				context.Background(),
+			r = r.WithContext(context.WithValue(
+				context.TODO(),
+				httprouter.ParamsKey,
 				httprouter.Params{
 					{
 						Key:   "id",
@@ -494,26 +472,26 @@ func TestService_RemoveCellV2(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			s.RemoveCellV2(w, r)
+			h.handleDeleteCell(w, r)
 
 			res := w.Result()
 			content := res.Header.Get("Content-Type")
 			body, _ := ioutil.ReadAll(res.Body)
 
 			if res.StatusCode != tt.wants.statusCode {
-				t.Errorf("%q. RemoveCellV2() = %v, want %v", tt.name, res.StatusCode, tt.wants.statusCode)
+				t.Errorf("%q. handleDeleteCell() = %v, want %v", tt.name, res.StatusCode, tt.wants.statusCode)
 			}
 			if tt.wants.contentType != "" && content != tt.wants.contentType {
-				t.Errorf("%q. RemoveCellV2() = %v, want %v", tt.name, content, tt.wants.contentType)
+				t.Errorf("%q. handleDeleteCell() = %v, want %v", tt.name, content, tt.wants.contentType)
 			}
 			if eq, _ := jsonEqual(string(body), tt.wants.body); tt.wants.body != "" && !eq {
-				t.Errorf("%q. RemoveCellV2() = \n***%v***\n,\nwant\n***%v***", tt.name, string(body), tt.wants.body)
+				t.Errorf("%q. handleDeleteCell() = \n***%v***\n,\nwant\n***%v***", tt.name, string(body), tt.wants.body)
 			}
 		})
 	}
 }
 
-func TestService_UpdateCellV2(t *testing.T) {
+func TestService_handlePatchCell(t *testing.T) {
 	type fields struct {
 		CellService platform.CellService
 	}
@@ -537,12 +515,12 @@ func TestService_UpdateCellV2(t *testing.T) {
 		{
 			name: "update a cell",
 			fields: fields{
-				&mocks.CellService{
+				&mock.CellService{
 					UpdateCellF: func(ctx context.Context, id platform.ID, upd platform.CellUpdate) (*platform.Cell, error) {
-						if id == "2" {
+						if bytes.Equal(id, mustParseID("020f755c3c082000")) {
 							return &platform.Cell{
 								CellContents: platform.CellContents{
-									ID:   platform.ID("2"),
+									ID:   mustParseID("020f755c3c082000"),
 									Name: "example",
 								},
 								Visualization: platform.V1Visualization{
@@ -556,18 +534,18 @@ func TestService_UpdateCellV2(t *testing.T) {
 				},
 			},
 			args: args{
-				id:   "2",
+				id:   "020f755c3c082000",
 				name: "example",
 			},
 			wants: wants{
 				statusCode:  http.StatusOK,
-				contentType: "application/json",
+				contentType: "application/json; charset=utf-8",
 				body: `
 {
-  "id": "2",
+  "id": "020f755c3c082000",
   "name": "example",
   "links": {
-    "self": "/chronograf/v2/cells/2"
+    "self": "/v2/cells/020f755c3c082000"
   },
   "visualization": {
     "type": "chronograf-v1",
@@ -600,12 +578,12 @@ func TestService_UpdateCellV2(t *testing.T) {
 		{
 			name: "update a cell with empty request body",
 			fields: fields{
-				&mocks.CellService{
+				&mock.CellService{
 					UpdateCellF: func(ctx context.Context, id platform.ID, upd platform.CellUpdate) (*platform.Cell, error) {
-						if id == "2" {
+						if bytes.Equal(id, mustParseID("020f755c3c082000")) {
 							return &platform.Cell{
 								CellContents: platform.CellContents{
-									ID:   platform.ID("2"),
+									ID:   mustParseID("020f755c3c082000"),
 									Name: "example",
 								},
 								Visualization: platform.V1Visualization{
@@ -619,43 +597,35 @@ func TestService_UpdateCellV2(t *testing.T) {
 				},
 			},
 			args: args{
-				id: "2",
+				id: "020f755c3c082000",
 			},
 			wants: wants{
-				statusCode:  http.StatusBadRequest,
-				contentType: "application/json",
-				body:        `{"code":400,"message":"expected at least one attribute to be updated"}`,
+				statusCode: http.StatusBadRequest,
 			},
 		},
 		{
 			name: "cell not found",
 			fields: fields{
-				&mocks.CellService{
+				&mock.CellService{
 					UpdateCellF: func(ctx context.Context, id platform.ID, upd platform.CellUpdate) (*platform.Cell, error) {
 						return nil, platform.ErrCellNotFound
 					},
 				},
 			},
 			args: args{
-				id:   "2",
+				id:   "020f755c3c082000",
 				name: "hello",
 			},
 			wants: wants{
-				statusCode:  http.StatusNotFound,
-				contentType: "application/json",
-				body:        `{"code":404,"message":"cell not found"}`,
+				statusCode: http.StatusNotFound,
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Service{
-				Store: &mocks.Store{
-					CellService: tt.fields.CellService,
-				},
-				Logger: log.New(log.DebugLevel),
-			}
+			h := NewCellHandler()
+			h.CellService = tt.fields.CellService
 
 			upd := platform.CellUpdate{}
 			if tt.args.name != "" {
@@ -672,8 +642,9 @@ func TestService_UpdateCellV2(t *testing.T) {
 
 			r := httptest.NewRequest("GET", "http://any.url", bytes.NewReader(b))
 
-			r = r.WithContext(httprouter.WithParams(
-				context.Background(),
+			r = r.WithContext(context.WithValue(
+				context.TODO(),
+				httprouter.ParamsKey,
 				httprouter.Params{
 					{
 						Key:   "id",
@@ -683,21 +654,42 @@ func TestService_UpdateCellV2(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			s.UpdateCellV2(w, r)
+			h.handlePatchCell(w, r)
 
 			res := w.Result()
 			content := res.Header.Get("Content-Type")
 			body, _ := ioutil.ReadAll(res.Body)
 
 			if res.StatusCode != tt.wants.statusCode {
-				t.Errorf("%q. UpdateCellV2() = %v, want %v", tt.name, res.StatusCode, tt.wants.statusCode)
+				t.Errorf("%q. handlePatchCell() = %v, want %v", tt.name, res.StatusCode, tt.wants.statusCode)
 			}
 			if tt.wants.contentType != "" && content != tt.wants.contentType {
-				t.Errorf("%q. UpdateCellV2() = %v, want %v", tt.name, content, tt.wants.contentType)
+				t.Errorf("%q. handlePatchCell() = %v, want %v", tt.name, content, tt.wants.contentType)
 			}
 			if eq, _ := jsonEqual(string(body), tt.wants.body); tt.wants.body != "" && !eq {
-				t.Errorf("%q. UpdateCellV2() = \n***%v***\n,\nwant\n***%v***", tt.name, string(body), tt.wants.body)
+				t.Errorf("%q. handlePatchCell() = \n***%v***\n,\nwant\n***%v***", tt.name, string(body), tt.wants.body)
 			}
 		})
 	}
+}
+
+func jsonEqual(s1, s2 string) (eq bool, err error) {
+	var o1, o2 interface{}
+
+	if err = json.Unmarshal([]byte(s1), &o1); err != nil {
+		return
+	}
+	if err = json.Unmarshal([]byte(s2), &o2); err != nil {
+		return
+	}
+
+	return cmp.Equal(o1, o2), nil
+}
+
+func mustParseID(i string) platform.ID {
+	id, err := platform.IDFromString(i)
+	if err != nil {
+		panic(err)
+	}
+	return *id
 }

@@ -9,9 +9,6 @@ import (
 // ErrCellNotFound is the error for a missing cell.
 const ErrCellNotFound = Error("cell not found")
 
-// ID is an ID
-type ID string
-
 // CellService represents a service for managing cell data.
 type CellService interface {
 	// FindCellByID returns a single cell by ID.

@@ -1,4 +1,4 @@
-package server
+package http
 
 import (
 	"bytes"
@@ -10,13 +10,12 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/bouk/httprouter"
-	"github.com/influxdata/platform/chronograf/log"
-	"github.com/influxdata/platform/chronograf/mocks"
-	"github.com/influxdata/platform/chronograf/v2"
+	"github.com/influxdata/platform"
+	"github.com/influxdata/platform/mock"
+	"github.com/julienschmidt/httprouter"
 )
 
-func TestService_DashboardsV2(t *testing.T) {
+func TestService_handleGetDashboards(t *testing.T) {
 	type fields struct {
 		DashboardService platform.DashboardService
 	}
@@ -38,7 +37,7 @@ func TestService_DashboardsV2(t *testing.T) {
 		{
 			name: "get all dashboards",
 			fields: fields{
-				&mocks.DashboardService{
+				&mock.DashboardService{
 					FindDashboardsF: func(ctx context.Context, filter platform.DashboardFilter) ([]*platform.Dashboard, int, error) {
 						return []*platform.Dashboard{
 							{
@@ -50,7 +49,7 @@ func TestService_DashboardsV2(t *testing.T) {
 										Y:   2,
 										W:   3,
 										H:   4,
-										Ref: "/chronograf/v2/cells/12",
+										Ref: "/v2/cells/12",
 									},
 								},
 							},
@@ -65,15 +64,15 @@ func TestService_DashboardsV2(t *testing.T) {
 			args: args{},
 			wants: wants{
 				statusCode:  http.StatusOK,
-				contentType: "application/json",
+				contentType: "application/json; charset=utf-8",
 				body: `
 {
   "links": {
-    "self": "/chronograf/v2/dashboards"
+    "self": "/v2/dashboards"
   },
   "dashboards": [
     {
-      "id": "0",
+      "id": "30",
       "name": "hello",
       "cells": [
         {
@@ -81,19 +80,19 @@ func TestService_DashboardsV2(t *testing.T) {
           "y": 2,
           "w": 3,
           "h": 4,
-          "ref": "/chronograf/v2/cells/12"
+          "ref": "/v2/cells/12"
         }
       ],
       "links": {
-        "self": "/chronograf/v2/dashboards/0"
+        "self": "/v2/dashboards/30"
       }
     },
     {
-      "id": "2",
+      "id": "32",
       "name": "example",
       "cells": [],
       "links": {
-        "self": "/chronograf/v2/dashboards/2"
+        "self": "/v2/dashboards/32"
       }
     }
   ]
@@ -104,7 +103,7 @@ func TestService_DashboardsV2(t *testing.T) {
 		{
 			name: "get all dashboards when there are none",
 			fields: fields{
-				&mocks.DashboardService{
+				&mock.DashboardService{
 					FindDashboardsF: func(ctx context.Context, filter platform.DashboardFilter) ([]*platform.Dashboard, int, error) {
 						return []*platform.Dashboard{}, 0, nil
 					},
@@ -113,11 +112,11 @@ func TestService_DashboardsV2(t *testing.T) {
 			args: args{},
 			wants: wants{
 				statusCode:  http.StatusOK,
-				contentType: "application/json",
+				contentType: "application/json; charset=utf-8",
 				body: `
 {
   "links": {
-    "self": "/chronograf/v2/dashboards"
+    "self": "/v2/dashboards"
   },
   "dashboards": []
 }`,
@@ -127,12 +126,8 @@ func TestService_DashboardsV2(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Service{
-				Store: &mocks.Store{
-					DashboardService: tt.fields.DashboardService,
-				},
-				Logger: log.New(log.DebugLevel),
-			}
+			h := NewDashboardHandler()
+			h.DashboardService = tt.fields.DashboardService
 
 			r := httptest.NewRequest("GET", "http://any.url", nil)
 
@@ -146,27 +141,27 @@ func TestService_DashboardsV2(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			s.DashboardsV2(w, r)
+			h.handleGetDashboards(w, r)
 
 			res := w.Result()
 			content := res.Header.Get("Content-Type")
 			body, _ := ioutil.ReadAll(res.Body)
 
 			if res.StatusCode != tt.wants.statusCode {
-				t.Errorf("%q. DashboardsV2() = %v, want %v", tt.name, res.StatusCode, tt.wants.statusCode)
+				t.Errorf("%q. handleGetDashboards() = %v, want %v", tt.name, res.StatusCode, tt.wants.statusCode)
 			}
 			if tt.wants.contentType != "" && content != tt.wants.contentType {
-				t.Errorf("%q. DashboardsV2() = %v, want %v", tt.name, content, tt.wants.contentType)
+				t.Errorf("%q. handleGetDashboards() = %v, want %v", tt.name, content, tt.wants.contentType)
 			}
 			if eq, _ := jsonEqual(string(body), tt.wants.body); tt.wants.body != "" && !eq {
-				t.Errorf("%q. DashboardsV2() = \n***%v***\n,\nwant\n***%v***", tt.name, string(body), tt.wants.body)
+				t.Errorf("%q. handleGetDashboards() = \n***%v***\n,\nwant\n***%v***", tt.name, string(body), tt.wants.body)
 			}
 
 		})
 	}
 }
 
-func TestService_DashboardIDV2(t *testing.T) {
+func TestService_handleGetDashboard(t *testing.T) {
 	type fields struct {
 		DashboardService platform.DashboardService
 	}
@@ -188,11 +183,11 @@ func TestService_DashboardIDV2(t *testing.T) {
 		{
 			name: "get a dashboard by id",
 			fields: fields{
-				&mocks.DashboardService{
+				&mock.DashboardService{
 					FindDashboardByIDF: func(ctx context.Context, id platform.ID) (*platform.Dashboard, error) {
-						if id == "2" {
+						if bytes.Equal(id, mustParseID("020f755c3c082000")) {
 							return &platform.Dashboard{
-								ID:   platform.ID("2"),
+								ID:   mustParseID("020f755c3c082000"),
 								Name: "hello",
 								Cells: []platform.DashboardCell{
 									{
@@ -200,7 +195,7 @@ func TestService_DashboardIDV2(t *testing.T) {
 										Y:   2,
 										W:   3,
 										H:   4,
-										Ref: "/chronograf/v2/cells/12",
+										Ref: "/v2/cells/12",
 									},
 								},
 							}, nil
@@ -211,14 +206,14 @@ func TestService_DashboardIDV2(t *testing.T) {
 				},
 			},
 			args: args{
-				id: "2",
+				id: "020f755c3c082000",
 			},
 			wants: wants{
 				statusCode:  http.StatusOK,
-				contentType: "application/json",
+				contentType: "application/json; charset=utf-8",
 				body: `
 {
-  "id": "2",
+  "id": "020f755c3c082000",
   "name": "hello",
   "cells": [
     {
@@ -226,11 +221,11 @@ func TestService_DashboardIDV2(t *testing.T) {
       "y": 2,
       "w": 3,
       "h": 4,
-      "ref": "/chronograf/v2/cells/12"
+      "ref": "/v2/cells/12"
     }
   ],
   "links": {
-    "self": "/chronograf/v2/dashboards/2"
+    "self": "/v2/dashboards/020f755c3c082000"
   }
 }
 `,
@@ -239,36 +234,31 @@ func TestService_DashboardIDV2(t *testing.T) {
 		{
 			name: "not found",
 			fields: fields{
-				&mocks.DashboardService{
+				&mock.DashboardService{
 					FindDashboardByIDF: func(ctx context.Context, id platform.ID) (*platform.Dashboard, error) {
 						return nil, platform.ErrDashboardNotFound
 					},
 				},
 			},
 			args: args{
-				id: "2",
+				id: "020f755c3c082000",
 			},
 			wants: wants{
-				statusCode:  http.StatusNotFound,
-				contentType: "application/json",
-				body:        `{"code":404,"message":"dashboard not found"}`,
+				statusCode: http.StatusNotFound,
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Service{
-				Store: &mocks.Store{
-					DashboardService: tt.fields.DashboardService,
-				},
-				Logger: log.New(log.DebugLevel),
-			}
+			h := NewDashboardHandler()
+			h.DashboardService = tt.fields.DashboardService
 
 			r := httptest.NewRequest("GET", "http://any.url", nil)
 
-			r = r.WithContext(httprouter.WithParams(
-				context.Background(),
+			r = r.WithContext(context.WithValue(
+				context.TODO(),
+				httprouter.ParamsKey,
 				httprouter.Params{
 					{
 						Key:   "id",
@@ -278,26 +268,26 @@ func TestService_DashboardIDV2(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			s.DashboardIDV2(w, r)
+			h.handleGetDashboard(w, r)
 
 			res := w.Result()
 			content := res.Header.Get("Content-Type")
 			body, _ := ioutil.ReadAll(res.Body)
 
 			if res.StatusCode != tt.wants.statusCode {
-				t.Errorf("%q. DashboardIDV2() = %v, want %v", tt.name, res.StatusCode, tt.wants.statusCode)
+				t.Errorf("%q. handleGetDashboard() = %v, want %v", tt.name, res.StatusCode, tt.wants.statusCode)
 			}
 			if tt.wants.contentType != "" && content != tt.wants.contentType {
-				t.Errorf("%q. DashboardIDV2() = %v, want %v", tt.name, content, tt.wants.contentType)
+				t.Errorf("%q. handleGetDashboard() = %v, want %v", tt.name, content, tt.wants.contentType)
 			}
 			if eq, _ := jsonEqual(string(body), tt.wants.body); tt.wants.body != "" && !eq {
-				t.Errorf("%q. DashboardIDV2() = \n***%v***\n,\nwant\n***%v***", tt.name, string(body), tt.wants.body)
+				t.Errorf("%q. handleGetDashboard() = \n***%v***\n,\nwant\n***%v***", tt.name, string(body), tt.wants.body)
 			}
 		})
 	}
 }
 
-func TestService_NewDashboardV2(t *testing.T) {
+func TestService_handlePostDashboards(t *testing.T) {
 	type fields struct {
 		DashboardService platform.DashboardService
 	}
@@ -319,9 +309,9 @@ func TestService_NewDashboardV2(t *testing.T) {
 		{
 			name: "create a new dashboard",
 			fields: fields{
-				&mocks.DashboardService{
+				&mock.DashboardService{
 					CreateDashboardF: func(ctx context.Context, c *platform.Dashboard) error {
-						c.ID = "2"
+						c.ID = mustParseID("020f755c3c082000")
 						return nil
 					},
 				},
@@ -335,17 +325,17 @@ func TestService_NewDashboardV2(t *testing.T) {
 							Y:   2,
 							W:   3,
 							H:   4,
-							Ref: "/chronograf/v2/cells/12",
+							Ref: "/v2/cells/12",
 						},
 					},
 				},
 			},
 			wants: wants{
 				statusCode:  http.StatusCreated,
-				contentType: "application/json",
+				contentType: "application/json; charset=utf-8",
 				body: `
 {
-  "id": "2",
+  "id": "020f755c3c082000",
   "name": "hello",
   "cells": [
     {
@@ -353,11 +343,11 @@ func TestService_NewDashboardV2(t *testing.T) {
       "y": 2,
       "w": 3,
       "h": 4,
-      "ref": "/chronograf/v2/cells/12"
+      "ref": "/v2/cells/12"
     }
   ],
   "links": {
-    "self": "/chronograf/v2/dashboards/2"
+    "self": "/v2/dashboards/020f755c3c082000"
   }
 }
 `,
@@ -367,12 +357,8 @@ func TestService_NewDashboardV2(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Service{
-				Store: &mocks.Store{
-					DashboardService: tt.fields.DashboardService,
-				},
-				Logger: log.New(log.DebugLevel),
-			}
+			h := NewDashboardHandler()
+			h.DashboardService = tt.fields.DashboardService
 
 			b, err := json.Marshal(tt.args.dashboard)
 			if err != nil {
@@ -382,26 +368,26 @@ func TestService_NewDashboardV2(t *testing.T) {
 			r := httptest.NewRequest("GET", "http://any.url", bytes.NewReader(b))
 			w := httptest.NewRecorder()
 
-			s.NewDashboardV2(w, r)
+			h.handlePostDashboards(w, r)
 
 			res := w.Result()
 			content := res.Header.Get("Content-Type")
 			body, _ := ioutil.ReadAll(res.Body)
 
 			if res.StatusCode != tt.wants.statusCode {
-				t.Errorf("%q. DashboardIDV2() = %v, want %v", tt.name, res.StatusCode, tt.wants.statusCode)
+				t.Errorf("%q. handlePostDashboard() = %v, want %v", tt.name, res.StatusCode, tt.wants.statusCode)
 			}
 			if tt.wants.contentType != "" && content != tt.wants.contentType {
-				t.Errorf("%q. DashboardIDV2() = %v, want %v", tt.name, content, tt.wants.contentType)
+				t.Errorf("%q. handlePostDashboard() = %v, want %v", tt.name, content, tt.wants.contentType)
 			}
 			if eq, _ := jsonEqual(string(body), tt.wants.body); tt.wants.body != "" && !eq {
-				t.Errorf("%q. DashboardIDV2() = \n***%v***\n,\nwant\n***%v***", tt.name, string(body), tt.wants.body)
+				t.Errorf("%q. handlePostDashboard() = \n***%v***\n,\nwant\n***%v***", tt.name, string(body), tt.wants.body)
 			}
 		})
 	}
 }
 
-func TestService_RemoveDashboardV2(t *testing.T) {
+func TestService_handleDeleteDashboard(t *testing.T) {
 	type fields struct {
 		DashboardService platform.DashboardService
 	}
@@ -423,9 +409,9 @@ func TestService_RemoveDashboardV2(t *testing.T) {
 		{
 			name: "remove a dashboard by id",
 			fields: fields{
-				&mocks.DashboardService{
+				&mock.DashboardService{
 					DeleteDashboardF: func(ctx context.Context, id platform.ID) error {
-						if id == "2" {
+						if bytes.Equal(id, mustParseID("020f755c3c082000")) {
 							return nil
 						}
 
@@ -434,7 +420,7 @@ func TestService_RemoveDashboardV2(t *testing.T) {
 				},
 			},
 			args: args{
-				id: "2",
+				id: "020f755c3c082000",
 			},
 			wants: wants{
 				statusCode: http.StatusNoContent,
@@ -443,36 +429,31 @@ func TestService_RemoveDashboardV2(t *testing.T) {
 		{
 			name: "dashboard not found",
 			fields: fields{
-				&mocks.DashboardService{
+				&mock.DashboardService{
 					DeleteDashboardF: func(ctx context.Context, id platform.ID) error {
 						return platform.ErrDashboardNotFound
 					},
 				},
 			},
 			args: args{
-				id: "2",
+				id: "020f755c3c082000",
 			},
 			wants: wants{
-				statusCode:  http.StatusNotFound,
-				contentType: "application/json",
-				body:        `{"code":404,"message":"dashboard not found"}`,
+				statusCode: http.StatusNotFound,
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Service{
-				Store: &mocks.Store{
-					DashboardService: tt.fields.DashboardService,
-				},
-				Logger: log.New(log.DebugLevel),
-			}
+			h := NewDashboardHandler()
+			h.DashboardService = tt.fields.DashboardService
 
 			r := httptest.NewRequest("GET", "http://any.url", nil)
 
-			r = r.WithContext(httprouter.WithParams(
-				context.Background(),
+			r = r.WithContext(context.WithValue(
+				context.TODO(),
+				httprouter.ParamsKey,
 				httprouter.Params{
 					{
 						Key:   "id",
@@ -482,26 +463,26 @@ func TestService_RemoveDashboardV2(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			s.RemoveDashboardV2(w, r)
+			h.handleDeleteDashboard(w, r)
 
 			res := w.Result()
 			content := res.Header.Get("Content-Type")
 			body, _ := ioutil.ReadAll(res.Body)
 
 			if res.StatusCode != tt.wants.statusCode {
-				t.Errorf("%q. RemoveDashboardV2() = %v, want %v", tt.name, res.StatusCode, tt.wants.statusCode)
+				t.Errorf("%q. handleDeleteDashboard() = %v, want %v", tt.name, res.StatusCode, tt.wants.statusCode)
 			}
 			if tt.wants.contentType != "" && content != tt.wants.contentType {
-				t.Errorf("%q. RemoveDashboardV2() = %v, want %v", tt.name, content, tt.wants.contentType)
+				t.Errorf("%q. handleDeleteDashboard() = %v, want %v", tt.name, content, tt.wants.contentType)
 			}
 			if eq, _ := jsonEqual(string(body), tt.wants.body); tt.wants.body != "" && !eq {
-				t.Errorf("%q. RemoveDashboardV2() = \n***%v***\n,\nwant\n***%v***", tt.name, string(body), tt.wants.body)
+				t.Errorf("%q. handleDeleteDashboard() = \n***%v***\n,\nwant\n***%v***", tt.name, string(body), tt.wants.body)
 			}
 		})
 	}
 }
 
-func TestService_UpdateDashboardV2(t *testing.T) {
+func TestService_handlePatchDashboard(t *testing.T) {
 	type fields struct {
 		DashboardService platform.DashboardService
 	}
@@ -525,11 +506,11 @@ func TestService_UpdateDashboardV2(t *testing.T) {
 		{
 			name: "update a dashboard name",
 			fields: fields{
-				&mocks.DashboardService{
+				&mock.DashboardService{
 					UpdateDashboardF: func(ctx context.Context, id platform.ID, upd platform.DashboardUpdate) (*platform.Dashboard, error) {
-						if id == "2" {
+						if bytes.Equal(id, mustParseID("020f755c3c082000")) {
 							d := &platform.Dashboard{
-								ID:   platform.ID("2"),
+								ID:   mustParseID("020f755c3c082000"),
 								Name: "hello",
 								Cells: []platform.DashboardCell{
 									{
@@ -537,7 +518,7 @@ func TestService_UpdateDashboardV2(t *testing.T) {
 										Y:   2,
 										W:   3,
 										H:   4,
-										Ref: "/chronograf/v2/cells/12",
+										Ref: "/v2/cells/12",
 									},
 								},
 							}
@@ -558,15 +539,15 @@ func TestService_UpdateDashboardV2(t *testing.T) {
 				},
 			},
 			args: args{
-				id:   "2",
+				id:   "020f755c3c082000",
 				name: "example",
 			},
 			wants: wants{
 				statusCode:  http.StatusOK,
-				contentType: "application/json",
+				contentType: "application/json; charset=utf-8",
 				body: `
 {
-  "id": "2",
+  "id": "020f755c3c082000",
   "name": "example",
   "cells": [
     {
@@ -574,11 +555,11 @@ func TestService_UpdateDashboardV2(t *testing.T) {
       "y": 2,
       "w": 3,
       "h": 4,
-      "ref": "/chronograf/v2/cells/12"
+      "ref": "/v2/cells/12"
     }
   ],
   "links": {
-    "self": "/chronograf/v2/dashboards/2"
+    "self": "/v2/dashboards/020f755c3c082000"
   }
 }
 `,
@@ -587,11 +568,11 @@ func TestService_UpdateDashboardV2(t *testing.T) {
 		{
 			name: "update a dashboard cells",
 			fields: fields{
-				&mocks.DashboardService{
+				&mock.DashboardService{
 					UpdateDashboardF: func(ctx context.Context, id platform.ID, upd platform.DashboardUpdate) (*platform.Dashboard, error) {
-						if id == "2" {
+						if bytes.Equal(id, mustParseID("020f755c3c082000")) {
 							d := &platform.Dashboard{
-								ID:   platform.ID("2"),
+								ID:   mustParseID("020f755c3c082000"),
 								Name: "hello",
 								Cells: []platform.DashboardCell{
 									{
@@ -599,7 +580,7 @@ func TestService_UpdateDashboardV2(t *testing.T) {
 										Y:   2,
 										W:   3,
 										H:   4,
-										Ref: "/chronograf/v2/cells/12",
+										Ref: "/v2/cells/12",
 									},
 								},
 							}
@@ -620,30 +601,30 @@ func TestService_UpdateDashboardV2(t *testing.T) {
 				},
 			},
 			args: args{
-				id: "2",
+				id: "020f755c3c082000",
 				cells: []platform.DashboardCell{
 					{
 						X:   1,
 						Y:   2,
 						W:   3,
 						H:   4,
-						Ref: "/chronograf/v2/cells/12",
+						Ref: "/v2/cells/12",
 					},
 					{
 						X:   2,
 						Y:   3,
 						W:   4,
 						H:   5,
-						Ref: "/chronograf/v2/cells/1",
+						Ref: "/v2/cells/1",
 					},
 				},
 			},
 			wants: wants{
 				statusCode:  http.StatusOK,
-				contentType: "application/json",
+				contentType: "application/json; charset=utf-8",
 				body: `
 {
-  "id": "2",
+  "id": "020f755c3c082000",
   "name": "hello",
   "cells": [
     {
@@ -651,18 +632,18 @@ func TestService_UpdateDashboardV2(t *testing.T) {
       "y": 2,
       "w": 3,
       "h": 4,
-      "ref": "/chronograf/v2/cells/12"
+      "ref": "/v2/cells/12"
     },
     {
       "x": 2,
       "y": 3,
       "w": 4,
       "h": 5,
-      "ref": "/chronograf/v2/cells/1"
+      "ref": "/v2/cells/1"
     }
   ],
   "links": {
-    "self": "/chronograf/v2/dashboards/2"
+    "self": "/v2/dashboards/020f755c3c082000"
   }
 }
 `,
@@ -671,50 +652,42 @@ func TestService_UpdateDashboardV2(t *testing.T) {
 		{
 			name: "update a dashboard with empty request body",
 			fields: fields{
-				&mocks.DashboardService{
+				&mock.DashboardService{
 					UpdateDashboardF: func(ctx context.Context, id platform.ID, upd platform.DashboardUpdate) (*platform.Dashboard, error) {
 						return nil, fmt.Errorf("not found")
 					},
 				},
 			},
 			args: args{
-				id: "2",
+				id: "020f755c3c082000",
 			},
 			wants: wants{
-				statusCode:  http.StatusBadRequest,
-				contentType: "application/json",
-				body:        `{"code":400,"message":"must update at least one attribute"}`,
+				statusCode: http.StatusBadRequest,
 			},
 		},
 		{
 			name: "dashboard not found",
 			fields: fields{
-				&mocks.DashboardService{
+				&mock.DashboardService{
 					UpdateDashboardF: func(ctx context.Context, id platform.ID, upd platform.DashboardUpdate) (*platform.Dashboard, error) {
 						return nil, platform.ErrDashboardNotFound
 					},
 				},
 			},
 			args: args{
-				id:   "2",
+				id:   "020f755c3c082000",
 				name: "hello",
 			},
 			wants: wants{
-				statusCode:  http.StatusNotFound,
-				contentType: "application/json",
-				body:        `{"code":404,"message":"dashboard not found"}`,
+				statusCode: http.StatusNotFound,
 			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			s := &Service{
-				Store: &mocks.Store{
-					DashboardService: tt.fields.DashboardService,
-				},
-				Logger: log.New(log.DebugLevel),
-			}
+			h := NewDashboardHandler()
+			h.DashboardService = tt.fields.DashboardService
 
 			upd := platform.DashboardUpdate{}
 			if tt.args.name != "" {
@@ -731,8 +704,9 @@ func TestService_UpdateDashboardV2(t *testing.T) {
 
 			r := httptest.NewRequest("GET", "http://any.url", bytes.NewReader(b))
 
-			r = r.WithContext(httprouter.WithParams(
-				context.Background(),
+			r = r.WithContext(context.WithValue(
+				context.TODO(),
+				httprouter.ParamsKey,
 				httprouter.Params{
 					{
 						Key:   "id",
@@ -742,20 +716,20 @@ func TestService_UpdateDashboardV2(t *testing.T) {
 
 			w := httptest.NewRecorder()
 
-			s.UpdateDashboardV2(w, r)
+			h.handlePatchDashboard(w, r)
 
 			res := w.Result()
 			content := res.Header.Get("Content-Type")
 			body, _ := ioutil.ReadAll(res.Body)
 
 			if res.StatusCode != tt.wants.statusCode {
-				t.Errorf("%q. UpdateDashboardV2() = %v, want %v", tt.name, res.StatusCode, tt.wants.statusCode)
+				t.Errorf("%q. handlePatchDashboard() = %v, want %v", tt.name, res.StatusCode, tt.wants.statusCode)
 			}
 			if tt.wants.contentType != "" && content != tt.wants.contentType {
-				t.Errorf("%q. UpdateDashboardV2() = %v, want %v", tt.name, content, tt.wants.contentType)
+				t.Errorf("%q. handlePatchDashboard() = %v, want %v", tt.name, content, tt.wants.contentType)
 			}
 			if eq, _ := jsonEqual(string(body), tt.wants.body); tt.wants.body != "" && !eq {
-				t.Errorf("%q. UpdateDashboardV2() = \n***%v***\n,\nwant\n***%v***", tt.name, string(body), tt.wants.body)
+				t.Errorf("%q. handlePatchDashboard() = \n***%v***\n,\nwant\n***%v***", tt.name, string(body), tt.wants.body)
 			}
 		})
 	}

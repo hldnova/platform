@@ -20,6 +20,7 @@ type PlatformHandler struct {
 	DashboardHandler     *DashboardHandler
 	AssetHandler         *AssetHandler
 	ChronografHandler    *ChronografHandler
+	CellHandler          *CellHandler
 	SourceHandler        *SourceHandler
 	TaskHandler          *TaskHandler
 	FluxLangHandler      *FluxLangHandler
@@ -114,7 +115,7 @@ func (h *PlatformHandler) ServeHTTP(w nethttp.ResponseWriter, r *nethttp.Request
 		return
 	}
 
-	if strings.HasPrefix(r.URL.Path, "/v1/dashboards") {
+	if strings.HasPrefix(r.URL.Path, "/v2/dashboards") {
 		h.DashboardHandler.ServeHTTP(w, r)
 		return
 	}
@@ -126,6 +127,11 @@ func (h *PlatformHandler) ServeHTTP(w nethttp.ResponseWriter, r *nethttp.Request
 
 	if strings.HasPrefix(r.URL.Path, "/v1/tasks") {
 		h.TaskHandler.ServeHTTP(w, r)
+	}
+
+	if strings.HasPrefix(r.URL.Path, "/v2/cells") {
+		h.CellHandler.ServeHTTP(w, r)
+		return
 	}
 
 	nethttp.NotFound(w, r)
