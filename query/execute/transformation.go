@@ -16,11 +16,17 @@ type Transformation interface {
 	Finish(id DatasetID, err error)
 }
 
+// StreamTransformation represents a transformation that has
+// the ability to update associated stream context
+type StreamTransformation interface {
+	ProcessStream(ctx StreamContext) error
+}
+
 type Administration interface {
 	OrganizationID() platform.ID
 
 	ResolveTime(qt query.Time) Time
-	Bounds() Bounds
+	StreamContext() StreamContext
 	Allocator() *Allocator
 	Parents() []DatasetID
 	ConvertID(plan.ProcedureID) DatasetID

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"runtime/debug"
+	"sync"
 
 	"github.com/influxdata/platform"
 	"github.com/influxdata/platform/query"
@@ -26,6 +27,31 @@ func NewExecutor(deps Dependencies) Executor {
 	return e
 }
 
+type streamContext struct {
+	mu     sync.Mutex
+	bounds Bounds
+}
+
+func newStreamContext(b Bounds) *streamContext {
+	return &streamContext{
+		bounds: b,
+		mu:     sync.Mutex{},
+	}
+}
+
+func (ctx *streamContext) Bounds() Bounds {
+	ctx.mu.Lock()
+	currentBounds := ctx.bounds
+	ctx.mu.Unlock()
+	return currentBounds
+}
+
+func (ctx *streamContext) UpdateBounds(newBounds Bounds) {
+	ctx.mu.Lock()
+	ctx.bounds = newBounds
+	ctx.mu.Unlock()
+}
+
 type executionState struct {
 	p    *plan.PlanSpec
 	deps Dependencies
@@ -36,7 +62,7 @@ type executionState struct {
 
 	resources query.ResourceManagement
 
-	bounds Bounds
+	streamContext *streamContext
 
 	results map[string]query.Result
 	sources []Source
