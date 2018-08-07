@@ -41,9 +41,8 @@ func newStreamContext(b Bounds) *streamContext {
 
 func (ctx *streamContext) Bounds() Bounds {
 	ctx.mu.Lock()
-	currentBounds := ctx.bounds
-	ctx.mu.Unlock()
-	return currentBounds
+	defer ctx.mu.Unlock()
+	return ctx.bounds
 }
 
 func (ctx *streamContext) UpdateBounds(newBounds Bounds) {
@@ -103,10 +102,12 @@ func (e *executor) createExecutionState(ctx context.Context, orgID platform.ID, 
 		results:   make(map[string]query.Result, len(p.Results)),
 		// TODO(nathanielc): Have the planner specify the dispatcher throughput
 		dispatcher: newPoolDispatcher(10),
-		bounds: Bounds{
-			Start: Time(p.Bounds.Start.Time(p.Now).UnixNano()),
-			Stop:  Time(p.Bounds.Stop.Time(p.Now).UnixNano()),
-		},
+		streamContext: newStreamContext(
+			Bounds{
+				Start: Time(p.Bounds.Start.Time(p.Now).UnixNano()),
+				Stop:  Time(p.Bounds.Stop.Time(p.Now).UnixNano()),
+			},
+		),
 	}
 	nodes := make(map[plan.ProcedureID]Node, len(p.Procedures))
 	for name, yield := range p.Results {
@@ -250,8 +251,9 @@ func (ec executionContext) OrganizationID() platform.ID {
 func (ec executionContext) ResolveTime(qt query.Time) Time {
 	return Time(qt.Time(ec.es.p.Now).UnixNano())
 }
-func (ec executionContext) Bounds() Bounds {
-	return ec.es.bounds
+
+func (ec executionContext) StreamContext() StreamContext {
+	return ec.es.streamContext
 }
 
 func (ec executionContext) Allocator() *Allocator {
