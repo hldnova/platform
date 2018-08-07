@@ -15,6 +15,7 @@ import (
 const RenameKind = "rename"
 const DropKind = "drop"
 const KeepKind = "keep"
+const DuplicateKind = "duplicate"
 
 type RenameOpSpec struct {
 	Cols map[string]string            `json:"columns"`
@@ -29,6 +30,10 @@ type DropOpSpec struct {
 type KeepOpSpec struct {
 	Cols      []string                     `json:"columns"`
 	Predicate *semantic.FunctionExpression `json:"fn"`
+}
+
+type DuplicateOpSpec struct {
+	Cols []string `json:"columns"`
 }
 
 // The base kind for SchemaMutations
@@ -94,6 +99,14 @@ var Registrars = []MutationRegistrar{
 		},
 		Create: createKeepOpSpec,
 		New:    newKeepOp,
+	},
+	{
+		Kind: DuplicateKind,
+		Args: map[string]semantic.Type{
+			"columns": semantic.NewArrayType(semantic.String),
+		},
+		Create: createDuplicateOpSpec,
+		New:    newDuplicateOp,
 	},
 }
 
@@ -257,6 +270,26 @@ func createKeepOpSpec(args query.Arguments, a *query.Administration) (query.Oper
 	}, nil
 }
 
+func createDuplicateOpSpec(args query.Arguments, a *query.Administration) (query.OperationSpec, error) {
+	if err := a.AddParentFromArgs(args); err != nil {
+		return nil, err
+	}
+
+	cols, err := args.GetRequiredArray("columns", semantic.String)
+	if err != nil {
+		return nil, err
+	}
+
+	duplicateCols, err := interpreter.ToStringArray(cols)
+	if err != nil {
+		return nil, err
+	}
+
+	return &DuplicateOpSpec{
+		Cols: duplicateCols,
+	}, nil
+}
+
 func newRenameOp() query.OperationSpec {
 	return new(RenameOpSpec)
 }
@@ -279,6 +312,14 @@ func newKeepOp() query.OperationSpec {
 
 func (s *KeepOpSpec) Kind() query.OperationKind {
 	return KeepKind
+}
+
+func newDuplicateOp() query.OperationSpec {
+	return new(DuplicateOpSpec)
+}
+
+func (s *DuplicateOpSpec) Kind() query.OperationKind {
+	return DuplicateKind
 }
 
 func (s *RenameOpSpec) Copy() SchemaMutation {
@@ -317,6 +358,17 @@ func (s *KeepOpSpec) Copy() SchemaMutation {
 	}
 }
 
+func (s *DuplicateOpSpec) Copy() SchemaMutation {
+	newCols := make([]string, len(s.Cols))
+	for i, c := range s.Cols {
+		newCols[i] = c
+	}
+
+	return &DuplicateOpSpec{
+		Cols: newCols,
+	}
+}
+
 func (s *RenameOpSpec) Mutator() (SchemaMutator, error) {
 	m, err := NewRenameMutator(s)
 	if err != nil {
@@ -335,6 +387,14 @@ func (s *DropOpSpec) Mutator() (SchemaMutator, error) {
 
 func (s *KeepOpSpec) Mutator() (SchemaMutator, error) {
 	m, err := NewDropKeepMutator(s)
+	if err != nil {
+		return nil, err
+	}
+	return m, nil
+}
+
+func (s *DuplicateOpSpec) Mutator() (SchemaMutator, error) {
+	m, err := NewDuplicateMutator(s)
 	if err != nil {
 		return nil, err
 	}

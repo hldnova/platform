@@ -318,6 +318,73 @@ func (m *DropKeepMutator) Mutate(ctx *BuilderContext) error {
 	return nil
 }
 
+type DuplicateMutator struct {
+	Cols map[string]bool
+}
+
+func NewDuplicateMutator(qs query.OperationSpec) (*DuplicateMutator, error) {
+	s, ok := qs.(*DuplicateOpSpec)
+	if !ok {
+		return nil, fmt.Errorf("invalid spec type %T", qs)
+	}
+
+	return &DuplicateMutator{
+		Cols: toStringSet(s.Cols),
+	}, nil
+}
+
+// TODO: make checkColumnReferences a separate utility function since all mutations use it
+func (m *DuplicateMutator) checkColumnReferences(cols []query.ColMeta) error {
+	for c := range m.Cols {
+		if execute.ColIdx(c, cols) < 0 {
+			return fmt.Errorf(`duplicate error: column "%s" doesn't exist`, c)
+		}
+	}
+	return nil
+}
+
+func (m *DuplicateMutator) Mutate(ctx *BuilderContext) error {
+	if err := m.checkColumnReferences(ctx.Cols()); err != nil {
+		return err
+	}
+
+	keyCols := make([]query.ColMeta, 0, len(ctx.Cols())+len(m.Cols))
+	keyValues := make([]values.Value, 0, len(ctx.Cols())+len(m.Cols))
+	newCols := make([]query.ColMeta, 0, len(ctx.Cols())+len(m.Cols))
+
+	oldColMap := ctx.ColMap()
+	newColMap := make([]int, 0, len(ctx.Cols())+len(m.Cols))
+
+	for i, c := range ctx.Cols() {
+		// Duplicate if the current column exists in the set of columns
+		_, dup := m.Cols[c.Label]
+
+		keyIdx := execute.ColIdx(c.Label, ctx.Key().Cols())
+		keyed := keyIdx >= 0
+
+		// Structuring as a loop allows for duplicating `n` times
+		// if that becomes necessary
+		for count := 0; count < 2; count++ {
+			if keyed {
+				keyCols = append(keyCols, c)
+				keyValues = append(keyValues, ctx.Key().Value(keyIdx))
+			}
+			newCols = append(newCols, c)
+			newColMap = append(newColMap, oldColMap[i])
+
+			if !dup {
+				break
+			}
+		}
+	}
+
+	ctx.TableColumns = newCols
+	ctx.TableKey = execute.NewGroupKey(keyCols, keyValues)
+	ctx.ColIdxMap = newColMap
+
+	return nil
+}
+
 // TODO: determine pushdown rules
 /*
 func (s *SchemaMutationProcedureSpec) PushDownRules() []plan.PushDownRule {
