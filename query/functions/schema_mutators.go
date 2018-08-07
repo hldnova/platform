@@ -320,6 +320,7 @@ func (m *DropKeepMutator) Mutate(ctx *BuilderContext) error {
 
 type DuplicateMutator struct {
 	Cols map[string]bool
+	N    int64
 }
 
 func NewDuplicateMutator(qs query.OperationSpec) (*DuplicateMutator, error) {
@@ -330,6 +331,7 @@ func NewDuplicateMutator(qs query.OperationSpec) (*DuplicateMutator, error) {
 
 	return &DuplicateMutator{
 		Cols: toStringSet(s.Cols),
+		N:    s.N,
 	}, nil
 }
 
@@ -348,6 +350,11 @@ func (m *DuplicateMutator) Mutate(ctx *BuilderContext) error {
 		return err
 	}
 
+	// If we don't want to make a single copy, no need to continue
+	if m.N == 0 {
+		return nil
+	}
+
 	keyCols := make([]query.ColMeta, 0, len(ctx.Cols())+len(m.Cols))
 	keyValues := make([]values.Value, 0, len(ctx.Cols())+len(m.Cols))
 	newCols := make([]query.ColMeta, 0, len(ctx.Cols())+len(m.Cols))
@@ -364,7 +371,7 @@ func (m *DuplicateMutator) Mutate(ctx *BuilderContext) error {
 
 		// Structuring as a loop allows for duplicating `n` times
 		// if that becomes necessary
-		for count := 0; count < 2; count++ {
+		for count := int64(0); count < m.N+1; count++ {
 			if keyed {
 				keyCols = append(keyCols, c)
 				keyValues = append(keyValues, ctx.Key().Value(keyIdx))

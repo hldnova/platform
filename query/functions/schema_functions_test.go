@@ -113,7 +113,7 @@ func TestSchemaMutions_NewQueries(t *testing.T) {
 		},
 		{
 			Name: "test duplicate query",
-			Raw:  `from(db:"mydb") |> duplicate(columns: ["col1", "col2", "col3"]) |> sum()`,
+			Raw:  `from(db:"mydb") |> duplicate(columns: ["col1", "col2", "col3"], n: 2) |> sum()`,
 			Want: &query.Spec{
 				Operations: []*query.Operation{
 					{
@@ -126,6 +126,7 @@ func TestSchemaMutions_NewQueries(t *testing.T) {
 						ID: "duplicate1",
 						Spec: &functions.DuplicateOpSpec{
 							Cols: []string{"col1", "col2", "col3"},
+							N:    int64(2),
 						},
 					},
 					{
@@ -276,6 +277,12 @@ func TestSchemaMutions_NewQueries(t *testing.T) {
 			Want:    nil,
 			WantErr: true,
 		},
+		{
+			Name:    "test duplicate query invalid",
+			Raw:     `from(db:"mydb") |> duplicate(columns: ["a", "b"], n: -1) |> sum()`,
+			Want:    nil,
+			WantErr: true,
+		},
 	}
 
 	for _, tc := range tests {
@@ -404,6 +411,7 @@ func TestDropRenameKeep_Process(t *testing.T) {
 				Mutations: []functions.SchemaMutation{
 					&functions.DuplicateOpSpec{
 						Cols: []string{"a", "b"},
+						N:    1,
 					},
 				},
 			},
@@ -431,6 +439,78 @@ func TestDropRenameKeep_Process(t *testing.T) {
 					{1.0, 1.0, 2.0, 2.0, 3.0},
 					{11.0, 11.0, 12.0, 12.0, 13.0},
 					{21.0, 21.0, 22.0, 22.0, 23.0},
+				},
+			}},
+		},
+		{
+			name: "duplicate multiple cols / 2",
+			spec: &functions.SchemaMutationProcedureSpec{
+				Mutations: []functions.SchemaMutation{
+					&functions.DuplicateOpSpec{
+						Cols: []string{"a"},
+						N:    2,
+					},
+				},
+			},
+			data: []query.Table{&executetest.Table{
+				ColMeta: []query.ColMeta{
+					{Label: "a", Type: query.TFloat},
+					{Label: "b", Type: query.TFloat},
+					{Label: "c", Type: query.TFloat},
+				},
+				Data: [][]interface{}{
+					{1.0, 2.0, 3.0},
+					{11.0, 12.0, 13.0},
+					{21.0, 22.0, 23.0},
+				},
+			}},
+			want: []*executetest.Table{{
+				ColMeta: []query.ColMeta{
+					{Label: "a", Type: query.TFloat},
+					{Label: "a", Type: query.TFloat},
+					{Label: "a", Type: query.TFloat},
+					{Label: "b", Type: query.TFloat},
+					{Label: "c", Type: query.TFloat},
+				},
+				Data: [][]interface{}{
+					{1.0, 1.0, 1.0, 2.0, 3.0},
+					{11.0, 11.0, 11.0, 12.0, 13.0},
+					{21.0, 21.0, 21.0, 22.0, 23.0},
+				},
+			}},
+		},
+		{
+			name: "duplicate 0 cols",
+			spec: &functions.SchemaMutationProcedureSpec{
+				Mutations: []functions.SchemaMutation{
+					&functions.DuplicateOpSpec{
+						Cols: []string{"a", "b"},
+						N:    0,
+					},
+				},
+			},
+			data: []query.Table{&executetest.Table{
+				ColMeta: []query.ColMeta{
+					{Label: "a", Type: query.TFloat},
+					{Label: "b", Type: query.TFloat},
+					{Label: "c", Type: query.TFloat},
+				},
+				Data: [][]interface{}{
+					{1.0, 2.0, 3.0},
+					{11.0, 12.0, 13.0},
+					{21.0, 22.0, 23.0},
+				},
+			}},
+			want: []*executetest.Table{{
+				ColMeta: []query.ColMeta{
+					{Label: "a", Type: query.TFloat},
+					{Label: "b", Type: query.TFloat},
+					{Label: "c", Type: query.TFloat},
+				},
+				Data: [][]interface{}{
+					{1.0, 2.0, 3.0},
+					{11.0, 12.0, 13.0},
+					{21.0, 22.0, 23.0},
 				},
 			}},
 		},
@@ -851,6 +931,7 @@ func TestDropRenameKeep_Process(t *testing.T) {
 				Mutations: []functions.SchemaMutation{
 					&functions.DuplicateOpSpec{
 						Cols: []string{"1a"},
+						N:    2,
 					},
 				},
 			},
@@ -879,23 +960,25 @@ func TestDropRenameKeep_Process(t *testing.T) {
 				ColMeta: []query.ColMeta{
 					{Label: "1a", Type: query.TFloat},
 					{Label: "1a", Type: query.TFloat},
+					{Label: "1a", Type: query.TFloat},
 					{Label: "2a", Type: query.TFloat},
 					{Label: "3a", Type: query.TFloat},
 				},
 				Data: [][]interface{}{
-					{1.0, 1.0, 2.0, 3.0},
-					{1.0, 1.0, 12.0, 3.0},
-					{1.0, 1.0, 22.0, 3.0},
+					{1.0, 1.0, 1.0, 2.0, 3.0},
+					{1.0, 1.0, 1.0, 12.0, 3.0},
+					{1.0, 1.0, 1.0, 22.0, 3.0},
 				},
-				KeyCols:   []string{"1a", "1a", "3a"},
-				KeyValues: []interface{}{1.0, 1.0, 3.0},
+				KeyCols:   []string{"1a", "1a", "1a", "3a"},
+				KeyValues: []interface{}{1.0, 1.0, 1.0, 3.0},
 				GroupKey: execute.NewGroupKey(
 					[]query.ColMeta{
 						{Label: "1a", Type: query.TFloat},
 						{Label: "1a", Type: query.TFloat},
+						{Label: "1a", Type: query.TFloat},
 						{Label: "3a", Type: query.TFloat},
 					},
-					[]values.Value{values.NewFloatValue(1.0), values.NewFloatValue(1.0), values.NewFloatValue(3.0)},
+					[]values.Value{values.NewFloatValue(1.0), values.NewFloatValue(1.0), values.NewFloatValue(1.0), values.NewFloatValue(3.0)},
 				),
 			}},
 		},

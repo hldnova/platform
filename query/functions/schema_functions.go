@@ -34,6 +34,7 @@ type KeepOpSpec struct {
 
 type DuplicateOpSpec struct {
 	Cols []string `json:"columns"`
+	N    int64    `json:"n"`
 }
 
 // The base kind for SchemaMutations
@@ -104,6 +105,7 @@ var Registrars = []MutationRegistrar{
 		Kind: DuplicateKind,
 		Args: map[string]semantic.Type{
 			"columns": semantic.NewArrayType(semantic.String),
+			"n":       semantic.Int,
 		},
 		Create: createDuplicateOpSpec,
 		New:    newDuplicateOp,
@@ -280,6 +282,19 @@ func createDuplicateOpSpec(args query.Arguments, a *query.Administration) (query
 		return nil, err
 	}
 
+	var nCopies int64
+	if n, ok, err := args.GetInt("n"); err != nil {
+		return nil, err
+	} else if ok {
+		nCopies = n
+	} else {
+		nCopies = 1
+	}
+
+	if nCopies < 0 {
+		return nil, errors.New("duplicate error: cannot copy a column less than 0 times")
+	}
+
 	duplicateCols, err := interpreter.ToStringArray(cols)
 	if err != nil {
 		return nil, err
@@ -287,6 +302,7 @@ func createDuplicateOpSpec(args query.Arguments, a *query.Administration) (query
 
 	return &DuplicateOpSpec{
 		Cols: duplicateCols,
+		N:    nCopies,
 	}, nil
 }
 

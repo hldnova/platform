@@ -901,6 +901,29 @@ Additionally exactly two columns must be provided to the `columns` property.
 Count is an aggregate operation.
 For each aggregated column, it outputs the number of non null records as an integer.
 
+#### Duplicate 
+Duplicate will duplicate specified columns in a data table.
+Given a list of columns and a number of copies to make, it will make 
+copies of those columns and add them to the returned data table. 
+If a duplicated column is also part 
+of the group key, it will also be duplicated in the key as many times as specified.
+
+Duplicate has the following properties:
+
+* `columns` array of strings
+    An array of columns to duplicate
+* `n` int
+    The number of times to duplicate any listed columns; default: 1 (a single copy of each listed column).
+    Invalid if negative.
+
+Example usage:
+
+Duplicate a list of columns: 
+`duplicate(columns:["a","b","c"])`
+
+Duplicate a list of columns twice (two copies for each  column):
+`duplicate(columns:["a", "b", "c"], n: 2)`
+
 ##### Integral
 
 Integral is an aggregate operation.
