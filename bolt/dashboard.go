@@ -10,13 +10,13 @@ import (
 )
 
 var (
-	dashboardV2Bucket = []byte("dashboardsv3")
+	dashboardBucket = []byte("dashboardsv2")
 )
 
 var _ platform.DashboardService = (*Client)(nil)
 
 func (c *Client) initializeDashboards(ctx context.Context, tx *bolt.Tx) error {
-	if _, err := tx.CreateBucketIfNotExists([]byte(dashboardV2Bucket)); err != nil {
+	if _, err := tx.CreateBucketIfNotExists([]byte(dashboardBucket)); err != nil {
 		return err
 	}
 	return nil
@@ -45,7 +45,7 @@ func (c *Client) FindDashboardByID(ctx context.Context, id platform.ID) (*platfo
 func (c *Client) findDashboardByID(ctx context.Context, tx *bolt.Tx, id platform.ID) (*platform.Dashboard, error) {
 	var d platform.Dashboard
 
-	v := tx.Bucket(dashboardV2Bucket).Get([]byte(id))
+	v := tx.Bucket(dashboardBucket).Get([]byte(id))
 
 	if len(v) == 0 {
 		return nil, platform.ErrDashboardNotFound
@@ -163,7 +163,7 @@ func (c *Client) putDashboard(ctx context.Context, tx *bolt.Tx, d *platform.Dash
 	if err != nil {
 		return err
 	}
-	if err := tx.Bucket(dashboardV2Bucket).Put([]byte(d.ID), v); err != nil {
+	if err := tx.Bucket(dashboardBucket).Put([]byte(d.ID), v); err != nil {
 		return err
 	}
 	return nil
@@ -171,7 +171,7 @@ func (c *Client) putDashboard(ctx context.Context, tx *bolt.Tx, d *platform.Dash
 
 // forEachDashboard will iterate through all dashboards while fn returns true.
 func (c *Client) forEachDashboard(ctx context.Context, tx *bolt.Tx, fn func(*platform.Dashboard) bool) error {
-	cur := tx.Bucket(dashboardV2Bucket).Cursor()
+	cur := tx.Bucket(dashboardBucket).Cursor()
 	for k, v := cur.First(); k != nil; k, v = cur.Next() {
 		d := &platform.Dashboard{}
 		if err := json.Unmarshal(v, d); err != nil {
@@ -233,5 +233,5 @@ func (c *Client) deleteDashboard(ctx context.Context, tx *bolt.Tx, id platform.I
 	if err != nil {
 		return err
 	}
-	return tx.Bucket(dashboardV2Bucket).Delete([]byte(id))
+	return tx.Bucket(dashboardBucket).Delete([]byte(id))
 }
