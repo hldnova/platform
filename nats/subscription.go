@@ -29,25 +29,3 @@ func (s subscription) Delivered() (int64, error) {
 func (s subscription) Close() error {
 	return s.sub.Close()
 }
-
-// Durable subscriptions:
-// sc, _ := stan.Connect("test-cluster", "client-123")
-//
-// // Subscribe with durable name
-// sc.Subscribe("foo", func(m *stan.Msg) {
-//     fmt.Printf("Received a message: %s\n", string(m.Data))
-// }, stan.DurableName("my-durable"))
-// ...
-// // client receives message sequence 1-40
-// ...
-// // client disconnects for an hour
-// ...
-// // client reconnects with same clientID "client-123"
-// sc, _ := stan.Connect("test-cluster", "client-123")
-//
-// // client re-subscribes to "foo" with same durable name "my-durable"
-// sc.Subscribe("foo", func(m *stan.Msg) {
-//     fmt.Printf("Received a message: %s\n", string(m.Data))
-// }, stan.DurableName("my-durable"))
-// ...
-// // client receives messages 41-current

@@ -29,7 +29,6 @@ type messageHandler struct {
 
 func (mh *messageHandler) handle(m *stan.Msg) {
 	mh.handler.Process(mh.sub, &message{m: m})
-
 }
 
 func (s *subscriber) Subscribe(subject, group string, handler Handler) error {
@@ -41,19 +40,3 @@ func (s *subscriber) Subscribe(subject, group string, handler Handler) error {
 	mh.sub = subscription{sub: sub}
 	return nil
 }
-
-// sc, _ := stan.Connect(clusterID, clientID)
-//
-// // Simple Synchronous Publisher
-// sc.Publish("foo", []byte("Hello World")) // does not return until an ack has been received from NATS Streaming
-//
-// // Simple Async Subscriber
-// sub, _ := sc.Subscribe("foo", func(m *stan.Msg) {
-//     fmt.Printf("Received a message: %s\n", string(m.Data))
-// })
-//
-// // Unsubscribe
-// sub.Unsubscribe()
-//
-// // Close connection
-// sc.Close()
