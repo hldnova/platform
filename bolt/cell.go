@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"strconv"
 
 	bolt "github.com/coreos/bbolt"
 	"github.com/influxdata/platform"
@@ -145,12 +144,7 @@ func (c *Client) findCells(ctx context.Context, tx *bolt.Tx, filter platform.Cel
 // CreateCell creates a platform cell and sets d.ID.
 func (c *Client) CreateCell(ctx context.Context, d *platform.Cell) error {
 	return c.db.Update(func(tx *bolt.Tx) error {
-		id, err := tx.Bucket(cellBucket).NextSequence()
-		if err != nil {
-			return err
-		}
-		d.ID = platform.ID(strconv.Itoa(int(id)))
-
+		d.ID = c.IDGenerator.ID()
 		return c.putCell(ctx, tx, d)
 	})
 }

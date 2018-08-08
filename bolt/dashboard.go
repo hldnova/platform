@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"strconv"
 
 	bolt "github.com/coreos/bbolt"
 	"github.com/influxdata/platform"
@@ -147,12 +146,7 @@ func (c *Client) findDashboards(ctx context.Context, tx *bolt.Tx, filter platfor
 // CreateDashboard creates a platform dashboard and sets d.ID.
 func (c *Client) CreateDashboard(ctx context.Context, d *platform.Dashboard) error {
 	return c.db.Update(func(tx *bolt.Tx) error {
-		id, err := tx.Bucket(dashboardV2Bucket).NextSequence()
-		if err != nil {
-			return err
-		}
-		d.ID = platform.ID(strconv.Itoa(int(id)))
-
+		d.ID = c.IDGenerator.ID()
 		return c.putDashboard(ctx, tx, d)
 	})
 }
