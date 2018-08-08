@@ -2,6 +2,9 @@ vendor
 .netrc
 .vs
 
+# NATS persistence
+/datastore
+
 # binary databases
 idpdb.bolt
 

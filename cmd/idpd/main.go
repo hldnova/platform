@@ -18,6 +18,7 @@ import (
 	"github.com/influxdata/platform/chronograf/server"
 	"github.com/influxdata/platform/http"
 	"github.com/influxdata/platform/kit/prom"
+	"github.com/influxdata/platform/nats"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -113,6 +114,67 @@ func platformF(cmd *cobra.Command, args []string) {
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGTERM)
+
+	// NATS streaming serve
+	_, err = nats.CreateServer()
+	if err != nil {
+		logger.Error("failed to start nats streaming server", zap.Error(err))
+		os.Exit(1)
+	} else {
+		s, err := nats.NewSubscriber("chris")
+		if err != nil {
+			logger.Error("failed to connect to streaming server", zap.Error(err))
+			os.Exit(1)
+		}
+		err = s.Subscribe("subject", "group", &nats.LogHandler{Logger: logger, Name: "chris"})
+		if err != nil {
+			logger.Error("failed to subscribe to subject 'subject'", zap.Error(err))
+			os.Exit(1)
+		}
+
+		s2, err := nats.NewSubscriber("jade")
+		if err != nil {
+			logger.Error("failed to connect to streaming server", zap.Error(err))
+			os.Exit(1)
+		}
+		err = s2.Subscribe("subject", "group", &nats.LogHandler{Logger: logger, Name: "jade"})
+		if err != nil {
+			logger.Error("failed to subscribe to subject 'subject'", zap.Error(err))
+			os.Exit(1)
+		}
+
+		p, err := nats.NewPublisher("bar")
+		if err != nil {
+			logger.Error("failed to connect to streaming server", zap.Error(err))
+			os.Exit(1)
+		}
+		go func() {
+			ticker := time.NewTicker(time.Millisecond * 500)
+			for t := range ticker.C {
+				err := p.Publish("subject", []byte("1"+t.String()))
+				if err != nil {
+					logger.Error("couldn't publish stuffs", zap.Error(err))
+					os.Exit(1)
+				}
+			}
+		}()
+
+		p2, err := nats.NewPublisher("baz")
+		if err != nil {
+			logger.Error("failed to connect to streaming server", zap.Error(err))
+			os.Exit(1)
+		}
+		go func() {
+			ticker := time.NewTicker(time.Millisecond * 750)
+			for t := range ticker.C {
+				err := p2.Publish("subject", []byte("2"+t.String()))
+				if err != nil {
+					logger.Error("couldn't publish stuffs", zap.Error(err))
+					os.Exit(1)
+				}
+			}
+		}()
+	}
 
 	httpServer := &nethttp.Server{
 		Addr: httpBindAddress,

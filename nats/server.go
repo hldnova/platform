@@ -1,17 +1,25 @@
 package nats
 
-import "github.com/nats-io/gnatsd/server"
+import (
+	stand "github.com/nats-io/nats-streaming-server/server"
+	stores "github.com/nats-io/nats-streaming-server/stores"
+)
 
-func RunServer(opts *server.Options) *server.Server {
-  s := server.New(opts)
-  if s == nil {
-    panic("No NATS Server object returned.")
-  }
+const ServerName = "platform"
 
-  go s.Start()
+type Server struct {
+	Server *stand.StanServer
+}
 
-  if !s.ReadyForConnections(10 * time.Second) {
-    panic("Unable to start NATS Server in Go Routine")
-  }
-  return s
+// this really doesn't serve any purpose atm
+func CreateServer() (*Server, error) {
+	opts := stand.GetDefaultOptions()
+	opts.StoreType = stores.TypeFile
+	opts.ID = ServerName
+	opts.FilestoreDir = "datastore"
+	opts.IOSleepTime = stand.DefaultIOSleepTime
+	server, err := stand.RunServerWithOpts(opts, nil)
+	s := &Server{Server: server}
+
+	return s, err
 }
