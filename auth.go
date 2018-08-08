@@ -62,6 +62,8 @@ const (
 	UserResource = resource("user")
 	// OrganizationResource represents the org resource actions can apply to.
 	OrganizationResource = resource("org")
+	// TaskResource represents the task resource actions can apply to.
+	TaskResource = resource("task")
 )
 
 // BucketResource constructs a bucket resource.
