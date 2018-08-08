@@ -1,6 +1,21 @@
+// Types
 import {Dispatch} from 'redux'
 import {Dashboard} from 'src/types/v2'
-import {getDashboards as getDashboardsAJAX} from 'src/dashboards/apis/v2'
+
+// APIs
+import {
+  getDashboards as getDashboardsAJAX,
+  createDashboard as createDashboardAJAX,
+} from 'src/dashboards/apis/v2'
+
+// Actions
+import {notify} from 'src/shared/actions/notifications'
+
+// Copy
+import {
+  notifyDashboardImported,
+  notifyDashboardImportFailed,
+} from 'src/shared/copy/notifications'
 
 export enum ActionTypes {
   LoadDashboards = 'LOAD_DASHBOARDS',
@@ -38,5 +53,23 @@ export const getDashboardsAsync = (url: string) => async (
   } catch (error) {
     console.error(error)
     throw error
+  }
+}
+
+export const importDashboardAsync = (
+  url: string,
+  dashboard: Dashboard
+) => async (dispatch: Dispatch<Action>): Promise<void> => {
+  try {
+    await createDashboardAJAX(url, dashboard)
+    const dashboards = await getDashboardsAJAX(url)
+
+    dispatch(loadDashboards(dashboards))
+    dispatch(notify(notifyDashboardImported(name)))
+  } catch (error) {
+    dispatch(
+      notify(notifyDashboardImportFailed('', 'Could not upload dashboard'))
+    )
+    console.error(error)
   }
 }

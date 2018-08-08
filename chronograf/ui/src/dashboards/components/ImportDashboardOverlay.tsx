@@ -7,7 +7,7 @@ import Body from 'src/reusable_ui/components/overlays/OverlayBody'
 import DragAndDrop from 'src/shared/components/DragAndDrop'
 import {notifyDashboardImportFailed} from 'src/shared/copy/notifications'
 
-import {Dashboard} from 'src/types'
+import {Dashboard} from 'src/types/v2'
 import {Notification} from 'src/types/notifications'
 
 interface Props {

@@ -4,9 +4,7 @@ import _ from 'lodash'
 
 import ConfirmButton from 'src/shared/components/ConfirmButton'
 
-import {getDeep} from 'src/utils/wrappers'
-
-import {Dashboard, Template} from 'src/types'
+import {Dashboard} from 'src/types/v2'
 
 interface Props {
   dashboards: Dashboard[]
@@ -38,7 +36,6 @@ class DashboardsTable extends PureComponent<Props> {
         <thead>
           <tr>
             <th>Name</th>
-            <th>Template Variables</th>
             <th />
           </tr>
         </thead>
@@ -50,7 +47,6 @@ class DashboardsTable extends PureComponent<Props> {
                   {dashboard.name}
                 </Link>
               </td>
-              <td>{this.getDashboardTemplates(dashboard)}</td>
               <td className="text-right">
                 <button
                   className="btn btn-xs btn-default table--show-on-row-hover"
@@ -78,22 +74,6 @@ class DashboardsTable extends PureComponent<Props> {
         </tbody>
       </table>
     )
-  }
-
-  private getDashboardTemplates = (
-    dashboard: Dashboard
-  ): JSX.Element | JSX.Element[] => {
-    const templates = getDeep<Template[]>(dashboard, 'templates', [])
-
-    if (templates.length) {
-      return templates.map(tv => (
-        <code className="table--temp-var" key={tv.id}>
-          {tv.tempVar}
-        </code>
-      ))
-    }
-
-    return <span className="empty-string">None</span>
   }
 
   private get emptyStateDashboard(): JSX.Element {

@@ -9,11 +9,14 @@ import PageHeader from 'src/reusable_ui/components/page_layout/PageHeader'
 import {getDeep} from 'src/utils/wrappers'
 
 import {createDashboard} from 'src/dashboards/apis/v2'
-import {getDashboardsAsync} from 'src/dashboards/actions/v2'
+import {
+  getDashboardsAsync,
+  importDashboardAsync,
+} from 'src/dashboards/actions/v2'
+
 import {
   deleteDashboardAsync,
   getChronografVersion,
-  importDashboardAsync,
   retainRangesDashTimeV1 as retainRangesDashTimeV1Action,
 } from 'src/dashboards/actions'
 import {notify as notifyAction} from 'src/shared/actions/notifications'
@@ -31,7 +34,7 @@ import {
 } from 'src/shared/copy/notifications'
 
 import {Notification} from 'src/types/notifications'
-import {DashboardFile, Cell} from 'src/types/dashboards'
+import {DashboardFile, DashboardCell} from 'src/types/v2/dashboards'
 import {Source, Links, Dashboard} from 'src/types/v2'
 
 interface Props {
@@ -41,7 +44,7 @@ interface Props {
   handleGetDashboards: typeof getDashboardsAsync
   handleGetChronografVersion: () => string
   handleDeleteDashboard: (dashboard: Dashboard) => void
-  handleImportDashboard: (dashboard: Dashboard) => void
+  handleImportDashboard: (url: string, dashboard: Dashboard) => void
   notify: (message: Notification) => void
   retainRangesDashTimeV1: (dashboardIDs: string[]) => void
   dashboards: Dashboard[]
@@ -90,15 +93,17 @@ class DashboardsPage extends PureComponent<Props> {
   private handleCloneDashboard = (dashboard: Dashboard) => async (): Promise<
     void
   > => {
-    const {
-      source: {id},
-      router: {push},
-    } = this.props
-    const {data} = await createDashboard({
-      ...dashboard,
-      name: `${dashboard.name} (clone)`,
-    })
-    push(`/sources/${id}/dashboards/${data.id}`)
+    const {source, router, links, notify} = this.props
+    const name = `${dashboard.name} (clone)`
+    try {
+      const data = await createDashboard(links.dashboards, {
+        ...dashboard,
+        name,
+      })
+      router.push(`/sources/${source.id}/dashboards/${data.id}`)
+    } catch (error) {
+      notify(dashboardCreateFailed())
+    }
   }
 
   private handleDeleteDashboard = (dashboard: Dashboard) => (): void => {
@@ -133,14 +138,15 @@ class DashboardsPage extends PureComponent<Props> {
   private handleImportDashboard = async (
     dashboard: Dashboard
   ): Promise<void> => {
+    const {links} = this.props
     const name = _.get(dashboard, 'name', DEFAULT_DASHBOARD_NAME)
-    const cellsWithDefaultsApplied = getDeep<Cell[]>(
+    const cellsWithDefaultsApplied = getDeep<DashboardCell[]>(
       dashboard,
       'cells',
       []
     ).map(c => ({...NEW_DEFAULT_DASHBOARD_CELL, ...c}))
 
-    await this.props.handleImportDashboard({
+    await this.props.handleImportDashboard(links.dashboards, {
       ...dashboard,
       name,
       cells: cellsWithDefaultsApplied,

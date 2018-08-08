@@ -7,7 +7,7 @@ import FancyScrollbar from 'src/shared/components/FancyScrollbar'
 import {ErrorHandling} from 'src/shared/decorators/errors'
 import OverlayTechnology from 'src/reusable_ui/components/overlays/OverlayTechnology'
 
-import {Dashboard} from 'src/types'
+import {Dashboard} from 'src/types/v2'
 import {Notification} from 'src/types/notifications'
 
 interface Props {

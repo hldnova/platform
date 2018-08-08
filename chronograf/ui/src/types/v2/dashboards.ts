@@ -103,6 +103,16 @@ export interface Dashboard {
   cells: DashboardCell[]
   name: string
   links: DashboardLinks
+  meta?: {[x: string]: any}
+}
+
+export interface DashboardFile {
+  meta?: DashboardFileMetaSection
+  dashboard: Dashboard
+}
+
+interface DashboardFileMetaSection {
+  chronografVersion?: string
 }
 
 export interface DashboardCell {
