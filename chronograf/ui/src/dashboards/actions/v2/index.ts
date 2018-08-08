@@ -2,12 +2,12 @@ import {Dispatch} from 'redux'
 import {Dashboard} from 'src/types/v2'
 import {getDashboards as getDashboardsAJAX} from 'src/dashboards/apis/v2'
 
-export enum ActionType {
+export enum ActionTypes {
   LoadDashboards = 'LOAD_DASHBOARDS',
 }
 
 interface LoadDashboardsAction {
-  type: ActionType.LoadDashboards
+  type: ActionTypes.LoadDashboards
   payload: {
     dashboards: Dashboard[]
   }
@@ -20,13 +20,13 @@ export type Action = LoadDashboardsAction
 export const loadDashboards = (
   dashboards: Dashboard[]
 ): LoadDashboardsAction => ({
-  type: ActionType.LoadDashboards,
+  type: ActionTypes.LoadDashboards,
   payload: {
     dashboards,
   },
 })
 
-// Thunkers
+// Thunks
 
 export const getDashboardsAsync = (url: string) => async (
   dispatch: Dispatch<Action>

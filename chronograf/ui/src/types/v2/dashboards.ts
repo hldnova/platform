@@ -1,6 +1,5 @@
-import {Template, TimeRange, QueryConfig} from 'src/types'
+import {QueryConfig} from 'src/types'
 import {ColorString} from 'src/types/colors'
-import Visualization from '../../dashboards/components/Visualization'
 
 export interface Axis {
   label: string
@@ -62,10 +61,8 @@ export interface DecimalPlaces {
 export interface Cell {
   id: string
   name: string
-  visualization: V1Visualization | EmptyVisualization
+  visualization: V1Visualization | {}
 }
-
-export interface EmptyVisualization {}
 
 export interface V1Visualization {
   type: string
@@ -99,7 +96,6 @@ export enum VisualizationType {
 
 interface DashboardLinks {
   self: string
-  cells: string
 }
 
 export interface Dashboard {
