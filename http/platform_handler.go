@@ -35,7 +35,8 @@ func setCORSResponseHeaders(w nethttp.ResponseWriter, r *nethttp.Request) {
 }
 
 var platformLinks = map[string]interface{}{
-	"sources": "/v2/sources",
+	"sources":    "/v2/sources",
+	"dashboards": "/v2/dashboards",
 	"flux": map[string]string{
 		"self":        "/v2/flux",
 		"ast":         "/v2/flux/ast",

@@ -9,8 +9,8 @@ import PageHeader from 'src/reusable_ui/components/page_layout/PageHeader'
 import {getDeep} from 'src/utils/wrappers'
 
 import {createDashboard} from 'src/dashboards/apis'
+import {getDashboardsAsync} from 'src/dashboards/actions/v2'
 import {
-  getDashboardsAsync,
   deleteDashboardAsync,
   getChronografVersion,
   importDashboardAsync,
@@ -144,10 +144,15 @@ class DashboardsPage extends PureComponent<Props> {
   }
 }
 
-const mapStateToProps = ({dashboardUI: {dashboards, dashboard}}) => ({
-  dashboards,
-  dashboard,
-})
+const mapStateToProps = state => {
+  const {dashboardUI, dashboards} = state
+  const dashboardV1 = dashboardUI.dashboard
+
+  return {
+    dashboard: dashboardV1,
+    dashboards,
+  }
+}
 
 const mapDispatchToProps = {
   handleGetDashboards: getDashboardsAsync,

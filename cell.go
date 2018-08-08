@@ -222,8 +222,9 @@ type DashboardQuery struct {
 	Label       string      `json:"label,omitempty"`       // Label is the Y-Axis label for the data
 	Range       *Range      `json:"range,omitempty"`       // Range is the default Y-Axis range for the data
 	QueryConfig QueryConfig `json:"queryConfig,omitempty"` // QueryConfig represents the query state that is understood by the data explorer
-	Source      string      `json:"source"`                // Source is the optional URI to the data source for this queryConfig
-	Shifts      []TimeShift `json:"-"`                     // Shifts represents shifts to apply to an influxql query's time range.  Clients expect the shift to be in the generated QueryConfig
+	// TODO(desa): this should be platform.ID
+	Source string      `json:"source"` // Source is the optional URI to the data source for this queryConfig
+	Shifts []TimeShift `json:"-"`      // Shifts represents shifts to apply to an influxql query's time range.  Clients expect the shift to be in the generated QueryConfig
 }
 
 // Range represents an upper and lower bound for data
