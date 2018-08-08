@@ -8,17 +8,19 @@ import (
 	platcontext "github.com/influxdata/platform/context"
 )
 
+var ErrUnauthorized = errors.New("unauthorized")
+
+type taskServiceValidator struct {
+	platform.TaskService
+}
+
 func NewValidator(ts platform.TaskService) platform.TaskService {
-	return &TaskServiceValidator{
+	return &taskServiceValidator{
 		TaskService: ts,
 	}
 }
 
-type TaskServiceValidator struct {
-	platform.TaskService
-}
-
-func (ts *TaskServiceValidator) CreateTask(ctx context.Context, t *platform.Task) error {
+func (ts *taskServiceValidator) CreateTask(ctx context.Context, t *platform.Task) error {
 	if err := checkPermission(ctx, platform.Permission{Action: platform.CreateAction, Resource: platform.TaskResource}); err != nil {
 		return err
 	}
@@ -35,6 +37,8 @@ func checkPermission(ctx context.Context, perm platform.Permission) error {
 	}
 
 	if !platform.Allowed(perm, auth.Permissions) {
-		return errors.New("unauthorized")
+		return ErrUnauthorized
 	}
+
+	return nil
 }
