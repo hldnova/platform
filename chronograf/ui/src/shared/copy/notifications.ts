@@ -464,6 +464,11 @@ export const notifyDashboardExportFailed = (
   message: `Failed to export Dashboard ${name}: ${errorMessage}.`,
 })
 
+export const dashboardCreateFailed = () => ({
+  ...defaultErrorNotification,
+  message: 'Failed to created dashboard.',
+})
+
 export const notifyDashboardImported = (name: string): Notification => ({
   ...defaultSuccessNotification,
   icon: 'dash-h',

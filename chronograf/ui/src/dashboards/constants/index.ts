@@ -102,7 +102,6 @@ type NewDefaultDashboard = Pick<
 export const DEFAULT_DASHBOARD_NAME = 'Name This Dashboard'
 export const NEW_DASHBOARD: NewDefaultDashboard = {
   name: DEFAULT_DASHBOARD_NAME,
-  cells: [NEW_DEFAULT_DASHBOARD_CELL],
 }
 
 export const TYPE_QUERY_CONFIG: string = 'queryConfig'

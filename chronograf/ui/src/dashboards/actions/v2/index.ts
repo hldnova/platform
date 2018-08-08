@@ -37,5 +37,6 @@ export const getDashboardsAsync = (url: string) => async (
     return dashboards
   } catch (error) {
     console.error(error)
+    throw error
   }
 }

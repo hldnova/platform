@@ -8,7 +8,7 @@ import DashboardsContents from 'src/dashboards/components/DashboardsPageContents
 import PageHeader from 'src/reusable_ui/components/page_layout/PageHeader'
 import {getDeep} from 'src/utils/wrappers'
 
-import {createDashboard} from 'src/dashboards/apis'
+import {createDashboard} from 'src/dashboards/apis/v2'
 import {getDashboardsAsync} from 'src/dashboards/actions/v2'
 import {
   deleteDashboardAsync,
@@ -27,28 +27,31 @@ import {ErrorHandling} from 'src/shared/decorators/errors'
 import {
   notifyDashboardExported,
   notifyDashboardExportFailed,
+  dashboardCreateFailed,
 } from 'src/shared/copy/notifications'
 
-import {Source, Dashboard} from 'src/types'
 import {Notification} from 'src/types/notifications'
 import {DashboardFile, Cell} from 'src/types/dashboards'
+import {Source, Links, Dashboard} from 'src/types/v2'
 
 interface Props {
   source: Source
   router: InjectedRouter
-  handleGetDashboards: () => Dashboard[]
+  links: Links
+  handleGetDashboards: typeof getDashboardsAsync
   handleGetChronografVersion: () => string
   handleDeleteDashboard: (dashboard: Dashboard) => void
   handleImportDashboard: (dashboard: Dashboard) => void
   notify: (message: Notification) => void
-  retainRangesDashTimeV1: (dashboardIDs: number[]) => void
+  retainRangesDashTimeV1: (dashboardIDs: string[]) => void
   dashboards: Dashboard[]
 }
 
 @ErrorHandling
 class DashboardsPage extends PureComponent<Props> {
   public async componentDidMount() {
-    const dashboards = await this.props.handleGetDashboards()
+    const {handleGetDashboards, dashboards, links} = this.props
+    await handleGetDashboards(links.dashboards)
     const dashboardIDs = dashboards.map(d => d.id)
     this.props.retainRangesDashTimeV1(dashboardIDs)
   }
@@ -75,12 +78,13 @@ class DashboardsPage extends PureComponent<Props> {
   }
 
   private handleCreateDashboard = async (): Promise<void> => {
-    const {
-      source: {id},
-      router: {push},
-    } = this.props
-    const {data} = await createDashboard(NEW_DASHBOARD)
-    push(`/sources/${id}/dashboards/${data.id}`)
+    const {source, links, router, notify} = this.props
+    try {
+      const data = await createDashboard(links.dashboards, NEW_DASHBOARD)
+      router.push(`/sources/${source.id}/dashboards/${data.id}`)
+    } catch (error) {
+      notify(dashboardCreateFailed())
+    }
   }
 
   private handleCloneDashboard = (dashboard: Dashboard) => async (): Promise<
@@ -145,12 +149,13 @@ class DashboardsPage extends PureComponent<Props> {
 }
 
 const mapStateToProps = state => {
-  const {dashboardUI, dashboards} = state
+  const {dashboardUI, dashboards, links} = state
   const dashboardV1 = dashboardUI.dashboard
 
   return {
     dashboard: dashboardV1,
     dashboards,
+    links,
   }
 }
 

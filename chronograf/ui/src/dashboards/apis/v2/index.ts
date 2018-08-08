@@ -13,3 +13,21 @@ export const getDashboards = async (url: string): Promise<Dashboard[]> => {
     throw error
   }
 }
+
+export const createDashboard = async (
+  url: string,
+  dashboard: Partial<Dashboard>
+): Promise<Dashboard> => {
+  try {
+    const {data} = await AJAX({
+      method: 'POST',
+      url,
+      data: dashboard,
+    })
+
+    return data
+  } catch (error) {
+    console.error(error)
+    throw error
+  }
+}
