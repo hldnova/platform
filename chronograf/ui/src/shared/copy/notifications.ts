@@ -487,7 +487,10 @@ export const notifyDashboardImportFailed = (
 export const notifyDashboardDeleteFailed = (
   name: string,
   errorMessage: string
-): string => `Failed to delete Dashboard ${name}: ${errorMessage}.`
+): Notification => ({
+  ...defaultErrorNotification,
+  message: `Failed to delete Dashboard ${name}: ${errorMessage}.`,
+})
 
 export const notifyCellAdded = (name: string): Notification => ({
   ...defaultSuccessNotification,

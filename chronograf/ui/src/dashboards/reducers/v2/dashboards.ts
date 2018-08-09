@@ -10,6 +10,12 @@ export default (state: State = [], action: Action): State => {
 
       return [...dashboards]
     }
+
+    case ActionTypes.DeleteDashboard: {
+      const {dashboard} = action.payload
+
+      return [...state.filter(d => d.id !== dashboard.id)]
+    }
   }
   return state
 }

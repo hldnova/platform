@@ -6,20 +6,22 @@ import {Dashboard} from 'src/types/v2'
 import {
   getDashboards as getDashboardsAJAX,
   createDashboard as createDashboardAJAX,
+  deleteDashboard as deleteDashboardAJAX,
 } from 'src/dashboards/apis/v2'
 
 // Actions
 import {notify} from 'src/shared/actions/notifications'
 
 // Copy
-import {
-  notifyDashboardImported,
-  notifyDashboardImportFailed,
-} from 'src/shared/copy/notifications'
+import * as __ from 'src/shared/copy/notifications'
 
 export enum ActionTypes {
   LoadDashboards = 'LOAD_DASHBOARDS',
+  DeleteDashboard = 'DELETE_DASHBOARD',
+  DeleteDashboardFailed = 'DELETE_DASHBOARD_FAILED',
 }
+
+export type Action = LoadDashboardsAction | DeleteDashboardAction
 
 interface LoadDashboardsAction {
   type: ActionTypes.LoadDashboards
@@ -28,7 +30,19 @@ interface LoadDashboardsAction {
   }
 }
 
-export type Action = LoadDashboardsAction
+interface DeleteDashboardAction {
+  type: ActionTypes.DeleteDashboard
+  payload: {
+    dashboard: Dashboard
+  }
+}
+
+interface DeleteDashboardFailedAction {
+  type: ActionTypes.DeleteDashboardFailed
+  payload: {
+    dashboard: Dashboard
+  }
+}
 
 // Action Creators
 
@@ -39,6 +53,20 @@ export const loadDashboards = (
   payload: {
     dashboards,
   },
+})
+
+export const deleteDashboard = (
+  dashboard: Dashboard
+): DeleteDashboardAction => ({
+  type: ActionTypes.DeleteDashboard,
+  payload: {dashboard},
+})
+
+export const deleteDashboardFailed = (
+  dashboard: Dashboard
+): DeleteDashboardFailedAction => ({
+  type: ActionTypes.DeleteDashboardFailed,
+  payload: {dashboard},
 })
 
 // Thunks
@@ -65,11 +93,28 @@ export const importDashboardAsync = (
     const dashboards = await getDashboardsAJAX(url)
 
     dispatch(loadDashboards(dashboards))
-    dispatch(notify(notifyDashboardImported(name)))
+    dispatch(notify(__.notifyDashboardImported(name)))
   } catch (error) {
     dispatch(
-      notify(notifyDashboardImportFailed('', 'Could not upload dashboard'))
+      notify(__.notifyDashboardImportFailed('', 'Could not upload dashboard'))
     )
     console.error(error)
+  }
+}
+
+export const deleteDashboardAsync = (dashboard: Dashboard) => async (
+  dispatch: Dispatch<Action>
+): Promise<void> => {
+  dispatch(deleteDashboard(dashboard))
+
+  try {
+    await deleteDashboardAJAX(dashboard.links.self)
+    dispatch(notify(__.notifyDashboardDeleted(dashboard.name)))
+  } catch (error) {
+    dispatch(
+      notify(__.notifyDashboardDeleteFailed(dashboard.name, error.data.message))
+    )
+
+    dispatch(deleteDashboardFailed(dashboard))
   }
 }

@@ -31,3 +31,15 @@ export const createDashboard = async (
     throw error
   }
 }
+
+export const deleteDashboard = async (url: string): Promise<void> => {
+  try {
+    return await AJAX({
+      method: 'DELETE',
+      url,
+    })
+  } catch (error) {
+    console.error(error)
+    throw error
+  }
+}

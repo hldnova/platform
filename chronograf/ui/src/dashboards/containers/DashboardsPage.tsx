@@ -1,5 +1,5 @@
 import React, {PureComponent} from 'react'
-import {withRouter, InjectedRouter} from 'react-router'
+import {InjectedRouter} from 'react-router'
 import {connect} from 'react-redux'
 import download from 'src/external/download'
 import _ from 'lodash'
@@ -12,10 +12,10 @@ import {createDashboard} from 'src/dashboards/apis/v2'
 import {
   getDashboardsAsync,
   importDashboardAsync,
+  deleteDashboardAsync,
 } from 'src/dashboards/actions/v2'
 
 import {
-  deleteDashboardAsync,
   getChronografVersion,
   retainRangesDashTimeV1 as retainRangesDashTimeV1Action,
 } from 'src/dashboards/actions'
@@ -42,9 +42,9 @@ interface Props {
   router: InjectedRouter
   links: Links
   handleGetDashboards: typeof getDashboardsAsync
-  handleGetChronografVersion: () => string
-  handleDeleteDashboard: (dashboard: Dashboard) => void
-  handleImportDashboard: (url: string, dashboard: Dashboard) => void
+  handleGetChronografVersion: typeof getChronografVersion
+  handleDeleteDashboard: typeof deleteDashboardAsync
+  handleImportDashboard: typeof importDashboardAsync
   notify: (message: Notification) => void
   retainRangesDashTimeV1: (dashboardIDs: string[]) => void
   dashboards: Dashboard[]
@@ -154,26 +154,22 @@ class DashboardsPage extends PureComponent<Props> {
   }
 }
 
-const mapStateToProps = state => {
-  const {dashboardUI, dashboards, links} = state
-  const dashboardV1 = dashboardUI.dashboard
+const mstp = state => {
+  const {dashboards, links} = state
 
   return {
-    dashboard: dashboardV1,
     dashboards,
     links,
   }
 }
 
-const mapDispatchToProps = {
+const mdtp = {
+  notify: notifyAction,
   handleGetDashboards: getDashboardsAsync,
   handleDeleteDashboard: deleteDashboardAsync,
   handleGetChronografVersion: getChronografVersion,
   handleImportDashboard: importDashboardAsync,
-  notify: notifyAction,
   retainRangesDashTimeV1: retainRangesDashTimeV1Action,
 }
 
-export default withRouter(
-  connect(mapStateToProps, mapDispatchToProps)(DashboardsPage)
-)
+export default connect(mstp, mdtp)(DashboardsPage)
