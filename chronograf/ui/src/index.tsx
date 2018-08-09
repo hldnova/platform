@@ -98,17 +98,18 @@ class Root extends PureComponent<{}, State> {
     return this.state.ready ? (
       <Provider store={store}>
         <Router history={history}>
-          <Route path="/" component={CheckSources} />
           <Route component={App}>
-            <Route path="logs" component={LogsPage} />
-            <Route path="dashboards/:dashboardID" component={DashboardPage} />
-            <Route path="sources/new" component={SourcePage} />
-            <Route path="dashboards" component={DashboardsPage} />
-            <Route path="status" component={StatusPage} />
-            <Route path="manage-sources" component={ManageSources} />
-            <Route path="manage-sources/new" component={SourcePage} />
-            <Route path="manage-sources/:id/edit" component={SourcePage} />
-            <Route path="delorean" component={FluxPage} />
+            <Route path="/" component={CheckSources}>
+              <Route path="logs" component={LogsPage} />
+              <Route path="dashboards/:dashboardID" component={DashboardPage} />
+              <Route path="sources/new" component={SourcePage} />
+              <Route path="dashboards" component={DashboardsPage} />
+              <Route path="status" component={StatusPage} />
+              <Route path="manage-sources" component={ManageSources} />
+              <Route path="manage-sources/new" component={SourcePage} />
+              <Route path="manage-sources/:id/edit" component={SourcePage} />
+              <Route path="delorean" component={FluxPage} />
+            </Route>
           </Route>
           <Route path="*" component={NotFound} />
         </Router>

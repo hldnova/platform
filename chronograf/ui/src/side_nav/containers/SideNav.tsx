@@ -1,6 +1,6 @@
 // Libraries
 import React, {PureComponent} from 'react'
-import {withRouter, Link} from 'react-router'
+import {withRouter, Link, WithRouterProps} from 'react-router'
 import {connect} from 'react-redux'
 import _ from 'lodash'
 
@@ -11,15 +11,12 @@ import {NavBlock, NavHeader} from 'src/side_nav/components/NavItems'
 import {DEFAULT_HOME_PAGE} from 'src/shared/constants'
 
 // Types
-import {Params, Location} from 'src/types/sideNav'
-import {Source} from 'src/types'
+import {Source} from 'src/types/v2'
 
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
-interface Props {
+interface Props extends WithRouterProps {
   sources: Source[]
-  params: Params
-  location: Location
   isHidden: boolean
 }
 
@@ -30,18 +27,15 @@ class SideNav extends PureComponent<Props> {
   }
 
   public render() {
-    const {
-      params: {sourceID},
-      location: {pathname: location},
-      isHidden,
-      sources = [],
-    } = this.props
+    const {location, isHidden, sources = []} = this.props
 
+    const {pathname, query} = location
     const defaultSource = sources.find(s => s.default)
-    const id = sourceID || _.get(defaultSource, 'id', 0)
+    const id = query.sourceID || _.get(defaultSource, 'id', 0)
+    console.log(sources)
 
-    const sourcePrefix = `/sources/${id}`
-    const isDefaultPage = location.split('/').includes(DEFAULT_HOME_PAGE)
+    const sourceParam = `?sourceID=${id}`
+    const isDefaultPage = pathname.split('/').includes(DEFAULT_HOME_PAGE)
 
     return isHidden ? null : (
       <nav className="sidebar">
@@ -49,7 +43,7 @@ class SideNav extends PureComponent<Props> {
           className={isDefaultPage ? 'sidebar--item active' : 'sidebar--item'}
         >
           <Link
-            to={`${sourcePrefix}/${DEFAULT_HOME_PAGE}`}
+            to={`/status/${sourceParam}`}
             className="sidebar--square sidebar--logo"
           >
             <span className="sidebar--icon icon cubo-uniform" />
@@ -58,16 +52,16 @@ class SideNav extends PureComponent<Props> {
         <NavBlock
           highlightWhen={['delorean']}
           icon="capacitor2"
-          link={`${sourcePrefix}/delorean`}
-          location={location}
+          link={`/delorean${sourceParam}`}
+          location={pathname}
         >
-          <NavHeader link={`${sourcePrefix}/delorean`} title="Flux Editor" />
+          <NavHeader link={`/delorean/${sourceParam}`} title="Flux Editor" />
         </NavBlock>
         <NavBlock
           highlightWhen={['dashboards']}
           icon="dash-j"
           link="dashboards"
-          location={location}
+          location={pathname}
         >
           <NavHeader link="dashboards" title="Dashboards" />
         </NavBlock>
@@ -75,18 +69,18 @@ class SideNav extends PureComponent<Props> {
           highlightWhen={['logs']}
           icon="wood"
           link="/logs"
-          location={location}
+          location={pathname}
         >
           <NavHeader link={'/logs'} title="Log Viewer" />
         </NavBlock>
         <NavBlock
           highlightWhen={['manage-sources', 'kapacitors']}
           icon="wrench"
-          link={`${sourcePrefix}/manage-sources`}
-          location={location}
+          link={`/manage-sources/${sourceParam}`}
+          location={pathname}
         >
           <NavHeader
-            link={`${sourcePrefix}/manage-sources`}
+            link={`/manage-sources/${sourceParam}`}
             title="Configuration"
           />
         </NavBlock>
