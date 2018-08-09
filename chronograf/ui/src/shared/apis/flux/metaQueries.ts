@@ -123,7 +123,7 @@ const proxy = async (service: Service, script: string) => {
       method: 'POST',
       url: `${
         service.links.proxy
-      }?path=/v1/query${mark}orgName=defaulorgname${and}q=${garbage}`,
+      }?path=/v2/query${mark}orgName=defaulorgname${and}q=${garbage}`,
     })
 
     return response.data

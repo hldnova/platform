@@ -57,7 +57,7 @@ export const getTimeSeries = async (
   const garbage = script.replace(/\s/g, '') // server cannot handle whitespace
   const url = `${window.basepath}${
     service.links.proxy
-  }?path=/v1/query${mark}orgName=defaulorgname${and}q=${garbage}`
+  }?path=/v2/query${mark}orgName=defaulorgname${and}q=${garbage}`
 
   let responseBody: string
   let responseByteLength: number
