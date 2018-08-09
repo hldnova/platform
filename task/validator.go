@@ -13,8 +13,8 @@ type authError struct {
 	authErr error
 }
 
-func (ae *authError) AuthError() string {
-	return ae.authErr.Error()
+func (ae *authError) AuthError() error {
+	return ae.authErr
 }
 
 var ErrFailedPermission = authError{error: errors.New("unauthorized"), authErr: errors.New("failed permission check")}

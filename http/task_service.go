@@ -107,7 +107,7 @@ func (h *TaskHandler) handlePostTask(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.TaskService.CreateTask(ctx, req.Task); err != nil {
 		if e, ok := err.(AuthError); ok {
-			h.logger.Error(e.AuthError(), zap.Error(err))
+			h.logger.Error("failed authentication", zap.Errors("error messages", []error{err, e.AuthError()}))
 		}
 		EncodeError(ctx, err, w)
 		return

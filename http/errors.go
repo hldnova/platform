@@ -18,7 +18,7 @@ const (
 
 type AuthError interface {
 	error
-	AuthError() string
+	AuthError() error
 }
 
 // CheckError reads the http.Response and returns an error if one exists.
