@@ -16,6 +16,11 @@ const (
 	errorHeaderMaxLength = 256
 )
 
+type AuthError interface {
+	error
+	AuthError() string
+}
+
 // CheckError reads the http.Response and returns an error if one exists.
 // It will automatically recognize the errors returned by Influx services
 // and decode the error into an internal error type. If the error cannot

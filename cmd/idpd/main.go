@@ -189,7 +189,7 @@ func platformF(cmd *cobra.Command, args []string) {
 		sourceHandler := http.NewSourceHandler()
 		sourceHandler.SourceService = sourceSvc
 
-		taskHandler := http.NewTaskHandler()
+		taskHandler := http.NewTaskHandler(logger)
 		taskHandler.TaskService = taskSvc
 
 		// TODO(desa): what to do about idpe.
