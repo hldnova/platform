@@ -64,3 +64,12 @@ export function deleteSource(source) {
     method: 'DELETE',
   })
 }
+
+export const getSourceHealth = async (url: string): Promise<void> => {
+  try {
+    await AJAX({url})
+  } catch (error) {
+    console.error(`Unable to contact source ${url}`, error)
+    throw error
+  }
+}

@@ -15,10 +15,7 @@ import {
   deleteDashboardAsync,
 } from 'src/dashboards/actions/v2'
 
-import {
-  getChronografVersion,
-  retainRangesDashTimeV1 as retainRangesDashTimeV1Action,
-} from 'src/dashboards/actions'
+import {retainRangesDashTimeV1 as retainRangesDashTimeV1Action} from 'src/dashboards/actions'
 import {notify as notifyAction} from 'src/shared/actions/notifications'
 
 import {
@@ -42,7 +39,6 @@ interface Props {
   router: InjectedRouter
   links: Links
   handleGetDashboards: typeof getDashboardsAsync
-  handleGetChronografVersion: typeof getChronografVersion
   handleDeleteDashboard: typeof deleteDashboardAsync
   handleImportDashboard: typeof importDashboardAsync
   notify: (message: Notification) => void
@@ -131,8 +127,7 @@ class DashboardsPage extends PureComponent<Props> {
   private modifyDashboardForDownload = async (
     dashboard: Dashboard
   ): Promise<DashboardFile> => {
-    const version = await this.props.handleGetChronografVersion()
-    return {meta: {chronografVersion: version}, dashboard}
+    return {meta: {chronografVersion: '2.0'}, dashboard}
   }
 
   private handleImportDashboard = async (
@@ -167,7 +162,6 @@ const mdtp = {
   notify: notifyAction,
   handleGetDashboards: getDashboardsAsync,
   handleDeleteDashboard: deleteDashboardAsync,
-  handleGetChronografVersion: getChronografVersion,
   handleImportDashboard: importDashboardAsync,
   retainRangesDashTimeV1: retainRangesDashTimeV1Action,
 }

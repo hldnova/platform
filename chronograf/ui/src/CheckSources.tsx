@@ -4,7 +4,7 @@ import {withRouter, InjectedRouter} from 'react-router'
 import {connect} from 'react-redux'
 
 // APIs
-import {getSourceHealth} from 'src/sources/apis'
+import {getSourceHealth} from 'src/shared/apis/v2/sources'
 import {getSourcesAsync} from 'src/shared/actions/sources'
 
 // Actions
@@ -15,13 +15,9 @@ import {DEFAULT_HOME_PAGE} from 'src/shared/constants'
 import * as copy from 'src/shared/copy/notifications'
 
 // Types
-import {
-  Source,
-  Notification,
-  NotificationFunc,
-  RemoteDataState,
-} from 'src/types'
+import {Source} from 'src/types/v2'
 import {Location} from 'history'
+import {Notification, NotificationFunc, RemoteDataState} from 'src/types'
 
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
