@@ -26,6 +26,7 @@ func GetQueryServiceBridge() *query.QueryServiceBridge {
 	config := control.Config{
 		ConcurrencyQuota: 1,
 		MemoryBytesQuota: math.MaxInt64,
+		Verbose:          true,
 	}
 
 	c := control.New(config)

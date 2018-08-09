@@ -2,6 +2,7 @@ package plan
 
 import (
 	"fmt"
+	"log"
 	"math"
 	"time"
 
@@ -15,9 +16,7 @@ const DefaultYieldName = "_result"
 
 type PlanSpec struct {
 	// Now represents the relative current time of the plan.
-	Now    time.Time
-	Bounds BoundsSpec
-
+	Now time.Time
 	// Procedures is a set of all operations
 	Procedures map[ProcedureID]*Procedure
 	Order      []ProcedureID
@@ -134,10 +133,38 @@ func (p *planner) Plan(lp *LogicalPlanSpec, s Storage) (*PlanSpec, error) {
 	var yields []*Procedure
 	for _, id := range p.plan.Order {
 		pr := p.plan.Procedures[id]
+
+		log.Println("current procedure id ", pr.ID)
+		// The bounds of the current procedure are always the union
+		// of the bounds of any parent procedure
+		log.Println("current bounds 0: ", pr.Bounds)
+		pr.DoParents(func(parent *Procedure) {
+			pr.Bounds = pr.Bounds.Union(parent.Bounds, now)
+			log.Println("bounds are now ", pr.Bounds)
+		})
+
+		log.Println("current bounds 1: ", pr.Bounds)
+
+		// If the procedure is bounded and provides its own additional bounds,
+		// the procedure's new bounds are the intersection of any bounds it inherited
+		// from its parents, and its own bounds.
 		if bounded, ok := pr.Spec.(BoundedProcedureSpec); ok {
-			bounds := bounded.TimeBounds()
-			p.plan.Bounds = p.plan.Bounds.Union(bounds, now)
+			log.Println("is bounds procedure spec")
+			pr.Bounds = pr.Bounds.Intersect(bounded.TimeBounds(), now)
 		}
+
+		log.Println("Current procedure bounds 2: ", pr.Bounds)
+		// If pr is a root procedure and has 0 bounds,
+		// that doesn't necessarily mean it's unbounded because range operations aren't always
+		// pushed down.
+		// If it has parents AND 0 bounds,
+		// or if it's a root node with no children and no parents AND  zero bounds,
+		// we return an error
+		if (len(pr.Parents) > 0 || (len(pr.Parents) == 0 && len(pr.Children) == 0)) &&
+			pr.Bounds.Start.IsZero() && pr.Bounds.Stop.IsZero() {
+			return nil, errors.New("unbounded queries are not supported. Add a 'range' call to bound the query.")
+		}
+
 		if yield, ok := pr.Spec.(YieldProcedureSpec); ok {
 			if len(pr.Parents) != 1 {
 				return nil, errors.New("yield procedures must have exactly one parent")
@@ -167,10 +194,6 @@ func (p *planner) Plan(lp *LogicalPlanSpec, s Storage) (*PlanSpec, error) {
 		} else {
 			return nil, errors.New("query must specify explicit yields when there is more than one result.")
 		}
-	}
-
-	if p.plan.Bounds.Start.IsZero() && p.plan.Bounds.Stop.IsZero() {
-		return nil, errors.New("unbounded queries are not supported. Add a 'range' call to bound the query.")
 	}
 
 	// Update concurrency quota

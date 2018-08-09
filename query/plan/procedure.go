@@ -22,6 +22,7 @@ type Procedure struct {
 	Parents  []ProcedureID
 	Children []ProcedureID
 	Spec     ProcedureSpec
+	Bounds   BoundsSpec
 }
 
 func (p *Procedure) Copy() *Procedure {
@@ -114,6 +115,28 @@ func (b BoundsSpec) Union(o BoundsSpec, now time.Time) (u BoundsSpec) {
 	u.Stop = b.Stop
 	if u.Stop.IsZero() || (!o.Start.IsZero() && o.Stop.Time(now).After(b.Stop.Time(now))) {
 		u.Stop = o.Stop
+	}
+	return
+}
+
+// Intersect returns the intersection of two bounds. If there is no intersection,
+// the first bounds are returned
+//[now - 1h, now] [now -30m, now]
+// [0, -1h] [0, -20m]
+func (b BoundsSpec) Intersect(o BoundsSpec, now time.Time) (i BoundsSpec) {
+	i.Start = b.Start
+	/*if i.Start.IsZero() || (!o.Start.IsZero() && o.Start.Time(now).After(b.Start.Time(now)) &&
+		(o.Start.Time(now).Before(b.Stop.Time(now)) || b.Stop.IsZero())) {
+		i.Start = o.Start
+	}*/
+
+	if i.Start.IsZero() && (o.Start.Time(now).Before(b.Stop.Time(now))) || o.Start.Time(now).After(b.Start.Time(now)) {
+		i.Start = o.Start
+	}
+
+	i.Stop = b.Stop
+	if (i.Stop.IsZero() && (o.Stop.Time(now).After(b.Start.Time(now)))) || (o.Stop.Time(now).Before(b.Stop.Time(now))) {
+		i.Stop = o.Stop
 	}
 	return
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/influxdata/platform"
 	"github.com/influxdata/platform/query"
 	"github.com/influxdata/platform/query/plan"
+	"github.com/influxdata/platform/query/values"
 	"github.com/pkg/errors"
 )
 
@@ -102,12 +103,6 @@ func (e *executor) createExecutionState(ctx context.Context, orgID platform.ID, 
 		results:   make(map[string]query.Result, len(p.Results)),
 		// TODO(nathanielc): Have the planner specify the dispatcher throughput
 		dispatcher: newPoolDispatcher(10),
-		streamContext: newStreamContext(
-			Bounds{
-				Start: Time(p.Bounds.Start.Time(p.Now).UnixNano()),
-				Stop:  Time(p.Bounds.Stop.Time(p.Now).UnixNano()),
-			},
-		),
 	}
 	nodes := make(map[plan.ProcedureID]Node, len(p.Procedures))
 	for name, yield := range p.Results {
@@ -135,10 +130,16 @@ func (es *executionState) createNode(ctx context.Context, pr *plan.Procedure, no
 	if n, ok := nodes[pr.ID]; ok {
 		return n, nil
 	}
+
 	// Build execution context
 	ec := executionContext{
 		es: es,
+		streamContext: newStreamContext(Bounds{
+			Start: values.Time(pr.Bounds.Start.Time(es.p.Now).UnixNano()),
+			Stop:  values.Time(pr.Bounds.Stop.Time(es.p.Now).UnixNano()),
+		}),
 	}
+
 	if len(pr.Parents) > 0 {
 		ec.parents = make([]DatasetID, len(pr.Parents))
 		for i, parentID := range pr.Parents {
@@ -238,9 +239,11 @@ func (es *executionState) do(ctx context.Context) {
 	}()
 }
 
+// Need a unique stream context per execution context
 type executionContext struct {
-	es      *executionState
-	parents []DatasetID
+	es            *executionState
+	parents       []DatasetID
+	streamContext *streamContext
 }
 
 // Satisfy the ExecutionContext interface
