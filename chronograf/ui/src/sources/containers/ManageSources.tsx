@@ -9,10 +9,7 @@ import FancyScrollbar from 'src/shared/components/FancyScrollbar'
 import PageHeader from 'src/reusable_ui/components/page_layout/PageHeader'
 import InfluxTable from 'src/sources/components/InfluxTable'
 
-import {
-  notifySourceDeleted,
-  notifySourceDeleteFailed,
-} from 'src/shared/copy/notifications'
+import {sourceDeleted, sourceDeleteFailed} from 'src/shared/copy/notifications'
 
 import {Source} from 'src/types/v2'
 import {Notification, Service} from 'src/types'
@@ -54,9 +51,9 @@ class ManageSources extends PureComponent<Props> {
 
     try {
       this.props.removeAndLoadSources(source)
-      notify(notifySourceDeleted(source.name))
+      notify(sourceDeleted(source.name))
     } catch (e) {
-      notify(notifySourceDeleteFailed(source.name))
+      notify(sourceDeleteFailed(source.name))
     }
   }
 }

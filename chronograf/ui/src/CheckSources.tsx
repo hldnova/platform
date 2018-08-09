@@ -85,7 +85,7 @@ export class CheckSources extends PureComponent<Props, State> {
       try {
         await getSourceHealth(source.links.health)
       } catch (error) {
-        notify(copy.notifySourceNoLongerAvailable(source.name))
+        notify(copy.sourceNoLongerAvailable(source.name))
       }
     }
   }

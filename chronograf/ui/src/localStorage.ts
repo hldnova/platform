@@ -1,8 +1,8 @@
 import _ from 'lodash'
 import normalizer from 'src/normalizers/dashboardTime'
 import {
-  notifyNewVersion,
-  notifyLoadLocalSettingsFailed,
+  newVersion,
+  loadLocalSettingsFailed,
 } from 'src/shared/copy/notifications'
 
 import {LocalStorage} from 'src/types/localStorage'
@@ -18,8 +18,8 @@ export const loadLocalStorage = (errorsQueue: any[]): LocalStorage | {} => {
     if (state.VERSION && state.VERSION !== VERSION) {
       const version = VERSION ? ` (${VERSION})` : ''
 
-      console.log(notifyNewVersion(version).message) // tslint:disable-line no-console
-      errorsQueue.push(notifyNewVersion(version))
+      console.log(newVersion(version).message) // tslint:disable-line no-console
+      errorsQueue.push(newVersion(version))
 
       if (!state.dashTimeV1) {
         window.localStorage.removeItem('state')
@@ -43,8 +43,8 @@ export const loadLocalStorage = (errorsQueue: any[]): LocalStorage | {} => {
 
     return state
   } catch (error) {
-    console.error(notifyLoadLocalSettingsFailed(error).message)
-    errorsQueue.push(notifyLoadLocalSettingsFailed(error))
+    console.error(loadLocalSettingsFailed(error).message)
+    errorsQueue.push(loadLocalSettingsFailed(error))
 
     return {}
   }

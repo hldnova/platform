@@ -4,7 +4,7 @@ import {notify} from './notifications'
 import {errorThrown} from 'src/shared/actions/errors'
 
 import {HTTP_NOT_FOUND} from 'src/shared/constants'
-import {notifyServerError} from 'src/shared/copy/notifications'
+import {serverError} from 'src/shared/copy/notifications'
 
 import {Source} from 'src/types/v2'
 
@@ -78,7 +78,7 @@ export const removeAndLoadSources = (source: Source) => async (
     const newSources = await getSourcesAJAX()
     dispatch(loadSources(newSources))
   } catch (err) {
-    dispatch(notify(notifyServerError))
+    dispatch(notify(serverError))
   }
 }
 

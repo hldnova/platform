@@ -30,15 +30,15 @@ import {
   getClonedDashboardCell,
 } from 'src/dashboards/utils/cellGetters'
 import {
-  notifyDashboardDeleted,
-  notifyDashboardDeleteFailed,
-  notifyCellAdded,
-  notifyCellDeleted,
-  notifyDashboardImportFailed,
-  notifyDashboardImported,
-  notifyDashboardNotFound,
-  notifyInvalidZoomedTimeRangeValueInURLQuery,
-  notifyInvalidTimeRangeValueInURLQuery,
+  dashboardDeleted,
+  dashboardDeleteFailed,
+  cellAdded,
+  cellDeleted,
+  dashboardImportFailed,
+  dashboardImported,
+  dashboardNotFound,
+  invalidZoomedTimeRangeValueInURLQuery,
+  invalidTimeRangeValueInURLQuery,
 } from 'src/shared/copy/notifications'
 
 import {getDeep} from 'src/utils/wrappers'
@@ -496,12 +496,12 @@ export const deleteDashboardAsync = (dashboard: Dashboard) => async (
   dispatch(deleteDashboard(dashboard))
   try {
     await deleteDashboardAJAX(dashboard)
-    dispatch(notify(notifyDashboardDeleted(dashboard.name)))
+    dispatch(notify(dashboardDeleted(dashboard.name)))
   } catch (error) {
     dispatch(
       errorThrown(
         error,
-        notifyDashboardDeleteFailed(dashboard.name, error.data.message)
+        dashboardDeleteFailed(dashboard.name, error.data.message)
       )
     )
     dispatch(deleteDashboardFailed(dashboard))
@@ -518,7 +518,7 @@ export const addDashboardCellAsync = (
       getNewDashboardCell(dashboard, cellType)
     )
     dispatch(addDashboardCell(dashboard, data))
-    dispatch(notify(notifyCellAdded(data.name)))
+    dispatch(notify(cellAdded(data.name)))
   } catch (error) {
     console.error(error)
     dispatch(errorThrown(error))
@@ -533,7 +533,7 @@ export const cloneDashboardCellAsync = (
     const clonedCell = getClonedDashboardCell(dashboard, cell)
     const {data} = await addDashboardCellAJAX(dashboard, clonedCell)
     dispatch(addDashboardCell(dashboard, data))
-    dispatch(notify(notifyCellAdded(clonedCell.name)))
+    dispatch(notify(cellAdded(clonedCell.name)))
   } catch (error) {
     console.error(error)
     dispatch(errorThrown(error))
@@ -547,7 +547,7 @@ export const deleteDashboardCellAsync = (
   try {
     await deleteDashboardCellAJAX(cell)
     dispatch(deleteDashboardCell(dashboard, cell))
-    dispatch(notify(notifyCellDeleted(cell.name)))
+    dispatch(notify(cellDeleted(cell.name)))
   } catch (error) {
     console.error(error)
     dispatch(errorThrown(error))
@@ -584,14 +584,14 @@ export const importDashboardAsync = (dashboard: Dashboard) => async (
 
     dispatch(loadDashboards(dashboards))
 
-    dispatch(notify(notifyDashboardImported(name)))
+    dispatch(notify(dashboardImported(name)))
   } catch (error) {
     const errorMessage = _.get(
       error,
       'data.message',
       'Could not upload dashboard'
     )
-    dispatch(notify(notifyDashboardImportFailed('', errorMessage)))
+    dispatch(notify(dashboardImportFailed('', errorMessage)))
     console.error(error)
     dispatch(errorThrown(error))
   }
@@ -626,7 +626,7 @@ const updateTimeRangeFromQueryParams = (dashboardID: number) => (
     validatedTimeRange = dashboardTimeRange || defaultTimeRange
 
     if (timeRangeFromQueries.lower || timeRangeFromQueries.upper) {
-      dispatch(notify(notifyInvalidTimeRangeValueInURLQuery()))
+      dispatch(notify(invalidTimeRangeValueInURLQuery()))
     }
   }
 
@@ -640,7 +640,7 @@ const updateTimeRangeFromQueryParams = (dashboardID: number) => (
     !validatedZoomedTimeRange.lower &&
     (queryParams.zoomedLower || queryParams.zoomedUpper)
   ) {
-    dispatch(notify(notifyInvalidZoomedTimeRangeValueInURLQuery()))
+    dispatch(notify(invalidZoomedTimeRangeValueInURLQuery()))
   }
 
   dispatch(setZoomedTimeRange(validatedZoomedTimeRange))
@@ -666,7 +666,7 @@ export const getDashboardWithTemplatesAsync = (
     dashboard = resp.data
   } catch {
     dispatch(replace(`/sources/${source.id}/dashboards`))
-    dispatch(notify(notifyDashboardNotFound(dashboardId)))
+    dispatch(notify(dashboardNotFound(dashboardId)))
 
     return
   }

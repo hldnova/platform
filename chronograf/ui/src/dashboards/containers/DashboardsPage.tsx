@@ -25,8 +25,8 @@ import {
 } from 'src/dashboards/constants'
 import {ErrorHandling} from 'src/shared/decorators/errors'
 import {
-  notifyDashboardExported,
-  notifyDashboardExportFailed,
+  dashboardExported,
+  dashboardExportFailed,
   dashboardCreateFailed,
 } from 'src/shared/copy/notifications'
 
@@ -118,9 +118,9 @@ class DashboardsPage extends PureComponent<Props> {
         `${dashboard.name}.json`,
         'text/plain'
       )
-      this.props.notify(notifyDashboardExported(dashboard.name))
+      this.props.notify(dashboardExported(dashboard.name))
     } catch (error) {
-      this.props.notify(notifyDashboardExportFailed(dashboard.name, error))
+      this.props.notify(dashboardExportFailed(dashboard.name, error))
     }
   }
 

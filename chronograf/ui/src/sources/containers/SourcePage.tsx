@@ -21,10 +21,10 @@ import {DEFAULT_SOURCE} from 'src/shared/constants'
 const INITIAL_PATH = '/sources/new'
 
 import {
-  notifySourceUpdated,
-  notifySourceUpdateFailed,
-  notifySourceCreationFailed,
-  notifySourceCreationSucceeded,
+  sourceUpdated,
+  sourceUpdateFailed,
+  sourceCreationFailed,
+  sourceCreationSucceeded,
 } from 'src/shared/copy/notifications'
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
@@ -148,10 +148,10 @@ class SourcePage extends PureComponent<Props, State> {
       const sourceFromServer = await createSource(sourcesLink, source)
       this.props.addSource(sourceFromServer)
       this.redirect(sourceFromServer)
-      notify(notifySourceCreationSucceeded(source.name))
+      notify(sourceCreationSucceeded(source.name))
     } catch (err) {
       // dont want to flash this until they submit
-      notify(notifySourceCreationFailed(source.name, this.parseError(err)))
+      notify(sourceCreationFailed(source.name, this.parseError(err)))
     }
   }
 
@@ -162,9 +162,9 @@ class SourcePage extends PureComponent<Props, State> {
       const sourceFromServer = await updateSource(source)
       this.props.updateSource(sourceFromServer)
       this.redirect(sourceFromServer)
-      notify(notifySourceUpdated(source.name))
+      notify(sourceUpdated(source.name))
     } catch (error) {
-      notify(notifySourceUpdateFailed(source.name, this.parseError(error)))
+      notify(sourceUpdateFailed(source.name, this.parseError(error)))
     }
   }
 

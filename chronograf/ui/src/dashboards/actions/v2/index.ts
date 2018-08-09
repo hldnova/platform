@@ -13,7 +13,7 @@ import {
 import {notify} from 'src/shared/actions/notifications'
 
 // Copy
-import * as __ from 'src/shared/copy/notifications'
+import * as copy from 'src/shared/copy/notifications'
 
 export enum ActionTypes {
   LoadDashboards = 'LOAD_DASHBOARDS',
@@ -93,10 +93,10 @@ export const importDashboardAsync = (
     const dashboards = await getDashboardsAJAX(url)
 
     dispatch(loadDashboards(dashboards))
-    dispatch(notify(__.notifyDashboardImported(name)))
+    dispatch(notify(copy.dashboardImported(name)))
   } catch (error) {
     dispatch(
-      notify(__.notifyDashboardImportFailed('', 'Could not upload dashboard'))
+      notify(copy.dashboardImportFailed('', 'Could not upload dashboard'))
     )
     console.error(error)
   }
@@ -109,10 +109,10 @@ export const deleteDashboardAsync = (dashboard: Dashboard) => async (
 
   try {
     await deleteDashboardAJAX(dashboard.links.self)
-    dispatch(notify(__.notifyDashboardDeleted(dashboard.name)))
+    dispatch(notify(copy.dashboardDeleted(dashboard.name)))
   } catch (error) {
     dispatch(
-      notify(__.notifyDashboardDeleteFailed(dashboard.name, error.data.message))
+      notify(copy.dashboardDeleteFailed(dashboard.name, error.data.message))
     )
 
     dispatch(deleteDashboardFailed(dashboard))

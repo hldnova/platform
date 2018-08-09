@@ -4,7 +4,7 @@ import _ from 'lodash'
 import LayoutCellMenu from 'src/shared/components/LayoutCellMenu'
 import LayoutCellHeader from 'src/shared/components/LayoutCellHeader'
 import {notify} from 'src/shared/actions/notifications'
-import {notifyCSVDownloadFailed} from 'src/shared/copy/notifications'
+import {csvDownloadFailed} from 'src/shared/copy/notifications'
 import download from 'src/external/download.js'
 import {ErrorHandling} from 'src/shared/decorators/errors'
 import {dataToCSV} from 'src/shared/parsing/dataToCSV'
@@ -129,7 +129,7 @@ export default class LayoutCell extends Component<Props> {
     try {
       download(dataToCSV(data), `${joinedName}.csv`, 'text/plain')
     } catch (error) {
-      notify(notifyCSVDownloadFailed())
+      notify(csvDownloadFailed())
       console.error(error)
     }
   }
