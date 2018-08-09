@@ -2,7 +2,6 @@ package plan
 
 import (
 	"fmt"
-	"log"
 	"math"
 	"time"
 
@@ -134,26 +133,19 @@ func (p *planner) Plan(lp *LogicalPlanSpec, s Storage) (*PlanSpec, error) {
 	for _, id := range p.plan.Order {
 		pr := p.plan.Procedures[id]
 
-		log.Println("current procedure id ", pr.ID)
 		// The bounds of the current procedure are always the union
 		// of the bounds of any parent procedure
-		log.Println("current bounds 0: ", pr.Bounds)
 		pr.DoParents(func(parent *Procedure) {
 			pr.Bounds = pr.Bounds.Union(parent.Bounds, now)
-			log.Println("bounds are now ", pr.Bounds)
 		})
-
-		log.Println("current bounds 1: ", pr.Bounds)
 
 		// If the procedure is bounded and provides its own additional bounds,
 		// the procedure's new bounds are the intersection of any bounds it inherited
 		// from its parents, and its own bounds.
 		if bounded, ok := pr.Spec.(BoundedProcedureSpec); ok {
-			log.Println("is bounds procedure spec")
 			pr.Bounds = pr.Bounds.Intersect(bounded.TimeBounds(), now)
 		}
 
-		log.Println("Current procedure bounds 2: ", pr.Bounds)
 		// If pr is a root procedure and has 0 bounds,
 		// that doesn't necessarily mean it's unbounded because range operations aren't always
 		// pushed down.

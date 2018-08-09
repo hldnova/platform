@@ -40,10 +40,6 @@ func TestExecutor_Execute(t *testing.T) {
 					ConcurrencyQuota: 1,
 					MemoryBytesQuota: math.MaxInt64,
 				},
-				Bounds: plan.BoundsSpec{
-					Start: query.Time{Absolute: time.Unix(0, 1)},
-					Stop:  query.Time{Absolute: time.Unix(0, 5)},
-				},
 				Procedures: map[plan.ProcedureID]*plan.Procedure{
 					plan.ProcedureIDFromOperationID("from"): {
 						ID: plan.ProcedureIDFromOperationID("from"),
@@ -64,6 +60,10 @@ func TestExecutor_Execute(t *testing.T) {
 									{execute.Time(0), execute.Time(5), execute.Time(4), 5.0},
 								},
 							}},
+						},
+						Bounds: plan.BoundsSpec{
+							Start: query.Time{Absolute: time.Unix(0, 1)},
+							Stop:  query.Time{Absolute: time.Unix(0, 5)},
 						},
 						Parents:  nil,
 						Children: []plan.ProcedureID{plan.ProcedureIDFromOperationID("sum")},
@@ -106,10 +106,6 @@ func TestExecutor_Execute(t *testing.T) {
 					ConcurrencyQuota: 1,
 					MemoryBytesQuota: math.MaxInt64,
 				},
-				Bounds: plan.BoundsSpec{
-					Start: query.Time{Absolute: time.Unix(0, 1)},
-					Stop:  query.Time{Absolute: time.Unix(0, 5)},
-				},
 				Procedures: map[plan.ProcedureID]*plan.Procedure{
 					plan.ProcedureIDFromOperationID("from"): {
 						ID: plan.ProcedureIDFromOperationID("from"),
@@ -130,6 +126,10 @@ func TestExecutor_Execute(t *testing.T) {
 									{execute.Time(0), execute.Time(5), execute.Time(4), int64(5)},
 								},
 							}},
+						},
+						Bounds: plan.BoundsSpec{
+							Start: query.Time{Absolute: time.Unix(0, 1)},
+							Stop:  query.Time{Absolute: time.Unix(0, 5)},
 						},
 						Parents:  nil,
 						Children: []plan.ProcedureID{plan.ProcedureIDFromOperationID("sum")},
@@ -264,10 +264,6 @@ func TestExecutor_Execute(t *testing.T) {
 					ConcurrencyQuota: 1,
 					MemoryBytesQuota: math.MaxInt64,
 				},
-				Bounds: plan.BoundsSpec{
-					Start: query.Time{Absolute: time.Unix(0, 1)},
-					Stop:  query.Time{Absolute: time.Unix(0, 5)},
-				},
 				Procedures: map[plan.ProcedureID]*plan.Procedure{
 					plan.ProcedureIDFromOperationID("from"): {
 						ID: plan.ProcedureIDFromOperationID("from"),
@@ -288,6 +284,10 @@ func TestExecutor_Execute(t *testing.T) {
 									{execute.Time(0), execute.Time(5), execute.Time(4), 5.0},
 								},
 							}},
+						},
+						Bounds: plan.BoundsSpec{
+							Start: query.Time{Absolute: time.Unix(0, 1)},
+							Stop:  query.Time{Absolute: time.Unix(0, 5)},
 						},
 						Parents: nil,
 						Children: []plan.ProcedureID{

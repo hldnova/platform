@@ -256,7 +256,7 @@ func (ec executionContext) ResolveTime(qt query.Time) Time {
 }
 
 func (ec executionContext) StreamContext() StreamContext {
-	return ec.es.streamContext
+	return ec.streamContext
 }
 
 func (ec executionContext) Allocator() *Allocator {

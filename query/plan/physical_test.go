@@ -1,7 +1,6 @@
 package plan_test
 
 import (
-	"log"
 	"math"
 	"testing"
 	"time"
@@ -276,62 +275,6 @@ func TestPhysicalPlanner_Plan(t *testing.T) {
 				},
 			},
 		},
-		{
-			pp: &plan.PlanSpec{
-				Now: time.Date(2017, 8, 8, 0, 0, 0, 0, time.UTC),
-				Resources: query.ResourceManagement{
-					ConcurrencyQuota: 2,
-					MemoryBytesQuota: math.MaxInt64,
-				},
-				Procedures: map[plan.ProcedureID]*plan.Procedure{
-					plan.ProcedureIDFromOperationID("from"): {
-						ID: plan.ProcedureIDFromOperationID("from"),
-						Spec: &functions.FromProcedureSpec{
-							Database:  "mydb",
-							BoundsSet: true,
-							Bounds: plan.BoundsSpec{
-								Start: query.Time{
-									IsRelative: true,
-									Relative:   -1 * time.Hour,
-								},
-							},
-							LimitSet:    true,
-							PointsLimit: 10,
-						},
-						Bounds: plan.BoundsSpec{
-							Start: query.Time{
-								IsRelative: true,
-								Relative:   -1 * time.Hour,
-							},
-						},
-						Parents:  nil,
-						Children: []plan.ProcedureID{plan.ProcedureIDFromOperationID("mean")},
-					},
-					plan.ProcedureIDFromOperationID("mean"): {
-						ID:   plan.ProcedureIDFromOperationID("mean"),
-						Spec: &functions.MeanProcedureSpec{},
-						Parents: []plan.ProcedureID{
-							(plan.ProcedureIDFromOperationID("from")),
-						},
-						Bounds: plan.BoundsSpec{
-							Start: query.Time{
-								IsRelative: true,
-								Relative:   -1 * time.Hour,
-							},
-						},
-						Children: nil,
-					},
-				},
-				Results: map[string]plan.YieldSpec{
-					plan.DefaultYieldName: {ID: plan.ProcedureIDFromOperationID("mean")},
-				},
-				Order: []plan.ProcedureID{
-					plan.ProcedureIDFromOperationID("from"),
-					plan.ProcedureIDFromOperationID("mean"),
-				},
-			},
-		},
-
 		{
 			name: "multiple yield",
 			lp: &plan.LogicalPlanSpec{
@@ -908,6 +851,176 @@ func TestPhysicalPlanner_Plan(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "bounds context",
+			lp: &plan.LogicalPlanSpec{
+				Procedures: map[plan.ProcedureID]*plan.Procedure{
+					plan.ProcedureIDFromOperationID("fromCSV"): {
+						ID: plan.ProcedureIDFromOperationID("fromCSV"),
+						Spec: &functions.FromCSVProcedureSpec{
+							File: "file",
+						},
+						Parents:  nil,
+						Children: []plan.ProcedureID{plan.ProcedureIDFromOperationID("range1")},
+					},
+					plan.ProcedureIDFromOperationID("range1"): {
+						ID: plan.ProcedureIDFromOperationID("range1"),
+						Spec: &functions.RangeProcedureSpec{
+							Bounds: plan.BoundsSpec{
+								Start: query.Time{
+									IsRelative: true,
+									Relative:   -1 * time.Hour,
+								},
+							},
+							TimeCol: "_time",
+						},
+						Parents: []plan.ProcedureID{
+							(plan.ProcedureIDFromOperationID("fromCSV")),
+						},
+						Children: []plan.ProcedureID{plan.ProcedureIDFromOperationID("range2")},
+					},
+					plan.ProcedureIDFromOperationID("range2"): {
+						ID: plan.ProcedureIDFromOperationID("range2"),
+						Spec: &functions.RangeProcedureSpec{
+							Bounds: plan.BoundsSpec{
+								Start: query.Time{
+									IsRelative: true,
+									Relative:   -30 * time.Minute,
+								},
+							},
+						},
+						Parents: []plan.ProcedureID{
+							(plan.ProcedureIDFromOperationID("range1")),
+						},
+						Children: []plan.ProcedureID{plan.ProcedureIDFromOperationID("limit")},
+					},
+					plan.ProcedureIDFromOperationID("limit"): {
+						ID: plan.ProcedureIDFromOperationID("limit"),
+						Spec: &functions.LimitProcedureSpec{
+							N: 10,
+						},
+						Parents: []plan.ProcedureID{
+							plan.ProcedureIDFromOperationID("range2"),
+						},
+						Children: []plan.ProcedureID{plan.ProcedureIDFromOperationID("mean")},
+					},
+					plan.ProcedureIDFromOperationID("mean"): {
+						ID:   plan.ProcedureIDFromOperationID("mean"),
+						Spec: &functions.MeanProcedureSpec{},
+						Parents: []plan.ProcedureID{
+							(plan.ProcedureIDFromOperationID("limit")),
+						},
+						Children: nil,
+					},
+				},
+				Order: []plan.ProcedureID{
+					plan.ProcedureIDFromOperationID("fromCSV"),
+					plan.ProcedureIDFromOperationID("range1"),
+					plan.ProcedureIDFromOperationID("range2"),
+					plan.ProcedureIDFromOperationID("limit"),
+					plan.ProcedureIDFromOperationID("mean"),
+				},
+			},
+			pp: &plan.PlanSpec{
+				Resources: query.ResourceManagement{
+					ConcurrencyQuota: 5,
+					MemoryBytesQuota: math.MaxInt64,
+				},
+				Procedures: map[plan.ProcedureID]*plan.Procedure{
+					plan.ProcedureIDFromOperationID("fromCSV"): {
+						ID: plan.ProcedureIDFromOperationID("fromCSV"),
+						Spec: &functions.FromCSVProcedureSpec{
+							File: "file",
+						},
+						Parents:  nil,
+						Children: []plan.ProcedureID{plan.ProcedureIDFromOperationID("range1")},
+					},
+					plan.ProcedureIDFromOperationID("range1"): {
+						ID: plan.ProcedureIDFromOperationID("range1"),
+						Spec: &functions.RangeProcedureSpec{
+							Bounds: plan.BoundsSpec{
+								Start: query.Time{
+									IsRelative: true,
+									Relative:   -1 * time.Hour,
+								},
+							},
+							TimeCol: "_time",
+						},
+						Bounds: plan.BoundsSpec{
+							Start: query.Time{
+								IsRelative: true,
+								Relative:   -1 * time.Hour,
+							},
+						},
+						Parents: []plan.ProcedureID{
+							(plan.ProcedureIDFromOperationID("fromCSV")),
+						},
+						Children: []plan.ProcedureID{plan.ProcedureIDFromOperationID("range2")},
+					},
+					plan.ProcedureIDFromOperationID("range2"): {
+						ID: plan.ProcedureIDFromOperationID("range2"),
+						Spec: &functions.RangeProcedureSpec{
+							Bounds: plan.BoundsSpec{
+								Start: query.Time{
+									IsRelative: true,
+									Relative:   -30 * time.Minute,
+								},
+							},
+						},
+						Bounds: plan.BoundsSpec{
+							Start: query.Time{
+								IsRelative: true,
+								Relative:   -30 * time.Minute,
+							},
+						},
+						Parents: []plan.ProcedureID{
+							(plan.ProcedureIDFromOperationID("range1")),
+						},
+						Children: []plan.ProcedureID{plan.ProcedureIDFromOperationID("limit")},
+					},
+					plan.ProcedureIDFromOperationID("limit"): {
+						ID: plan.ProcedureIDFromOperationID("limit"),
+						Spec: &functions.LimitProcedureSpec{
+							N: 10,
+						},
+						Bounds: plan.BoundsSpec{
+							Start: query.Time{
+								IsRelative: true,
+								Relative:   -30 * time.Minute,
+							},
+						},
+						Parents: []plan.ProcedureID{
+							plan.ProcedureIDFromOperationID("range2"),
+						},
+						Children: []plan.ProcedureID{plan.ProcedureIDFromOperationID("mean")},
+					},
+					plan.ProcedureIDFromOperationID("mean"): {
+						ID:   plan.ProcedureIDFromOperationID("mean"),
+						Spec: &functions.MeanProcedureSpec{},
+						Bounds: plan.BoundsSpec{
+							Start: query.Time{
+								IsRelative: true,
+								Relative:   -30 * time.Minute,
+							},
+						},
+						Parents: []plan.ProcedureID{
+							(plan.ProcedureIDFromOperationID("limit")),
+						},
+						Children: nil,
+					},
+				},
+				Results: map[string]plan.YieldSpec{
+					plan.DefaultYieldName: {ID: plan.ProcedureIDFromOperationID("mean")},
+				},
+				Order: []plan.ProcedureID{
+					plan.ProcedureIDFromOperationID("fromCSV"),
+					plan.ProcedureIDFromOperationID("range1"),
+					plan.ProcedureIDFromOperationID("range2"),
+					plan.ProcedureIDFromOperationID("limit"),
+					plan.ProcedureIDFromOperationID("mean"),
+				},
+			},
+		},
 	}
 	for _, tc := range testCases {
 		tc := tc
@@ -987,6 +1100,10 @@ func TestPhysicalPlanner_Plan_PushDown_Branch(t *testing.T) {
 					DescendingSet: true,
 					Descending:    true, // last
 				},
+				Bounds: plan.BoundsSpec{
+					Start: query.MinTime,
+					Stop:  query.Now,
+				},
 				Children: []plan.ProcedureID{},
 			},
 			fromIDDup: {
@@ -1002,6 +1119,10 @@ func TestPhysicalPlanner_Plan_PushDown_Branch(t *testing.T) {
 					PointsLimit:   1,
 					DescendingSet: true,
 					Descending:    false, // first
+				},
+				Bounds: plan.BoundsSpec{
+					Start: query.MinTime,
+					Stop:  query.Now,
 				},
 				Parents:  []plan.ProcedureID{},
 				Children: []plan.ProcedureID{},
@@ -1163,181 +1284,6 @@ func TestPhysicalPlanner_Plan_PushDown_Mixed(t *testing.T) {
 	PhysicalPlanTestHelper(t, lp, want)
 }
 
-func TestPhysicalPlanner_BoundsContext(t *testing.T) {
-	range1id := plan.ProcedureIDFromOperationID("range1")
-	range2id := plan.ProcedureIDFromParentID(range1id)
-	lp := &plan.LogicalPlanSpec{
-		Procedures: map[plan.ProcedureID]*plan.Procedure{
-			plan.ProcedureIDFromOperationID("fromCSV"): {
-				ID: plan.ProcedureIDFromOperationID("fromCSV"),
-				Spec: &functions.FromCSVProcedureSpec{
-					File: "file",
-				},
-				Parents:  nil,
-				Children: []plan.ProcedureID{range1id},
-			},
-			range1id: {
-				ID: range1id,
-				Spec: &functions.RangeProcedureSpec{
-					Bounds: plan.BoundsSpec{
-						Start: query.Time{
-							IsRelative: true,
-							Relative:   -1 * time.Hour,
-						},
-					},
-					TimeCol: "_time",
-				},
-				Parents: []plan.ProcedureID{
-					(plan.ProcedureIDFromOperationID("fromCSV")),
-				},
-				Children: []plan.ProcedureID{range2id},
-			},
-			range2id: {
-				ID: range2id,
-				Spec: &functions.RangeProcedureSpec{
-					Bounds: plan.BoundsSpec{
-						Start: query.Time{
-							IsRelative: true,
-							Relative:   -30 * time.Minute,
-						},
-					},
-				},
-				Parents: []plan.ProcedureID{
-					(range1id),
-				},
-				Children: []plan.ProcedureID{plan.ProcedureIDFromOperationID("limit")},
-			},
-			plan.ProcedureIDFromOperationID("limit"): {
-				ID: plan.ProcedureIDFromOperationID("limit"),
-				Spec: &functions.LimitProcedureSpec{
-					N: 10,
-				},
-				Parents: []plan.ProcedureID{
-					range2id,
-				},
-				Children: []plan.ProcedureID{plan.ProcedureIDFromOperationID("mean")},
-			},
-			plan.ProcedureIDFromOperationID("mean"): {
-				ID:   plan.ProcedureIDFromOperationID("mean"),
-				Spec: &functions.MeanProcedureSpec{},
-				Parents: []plan.ProcedureID{
-					(plan.ProcedureIDFromOperationID("limit")),
-				},
-				Children: nil,
-			},
-		},
-		Order: []plan.ProcedureID{
-			plan.ProcedureIDFromOperationID("fromCSV"),
-			range1id,
-			range2id,
-			plan.ProcedureIDFromOperationID("limit"),
-			plan.ProcedureIDFromOperationID("mean"),
-		},
-	}
-
-	want := &plan.PlanSpec{
-		Resources: query.ResourceManagement{
-			ConcurrencyQuota: 5,
-			MemoryBytesQuota: math.MaxInt64,
-		},
-		Procedures: map[plan.ProcedureID]*plan.Procedure{
-			plan.ProcedureIDFromOperationID("fromCSV"): {
-				ID: plan.ProcedureIDFromOperationID("fromCSV"),
-				Spec: &functions.FromCSVProcedureSpec{
-					File: "file",
-				},
-				Parents:  nil,
-				Children: []plan.ProcedureID{range1id},
-			},
-			range1id: {
-				ID: range1id,
-				Spec: &functions.RangeProcedureSpec{
-					Bounds: plan.BoundsSpec{
-						Start: query.Time{
-							IsRelative: true,
-							Relative:   -1 * time.Hour,
-						},
-					},
-					TimeCol: "_time",
-				},
-				Bounds: plan.BoundsSpec{
-					Start: query.Time{
-						IsRelative: true,
-						Relative:   -1 * time.Hour,
-					},
-				},
-				Parents: []plan.ProcedureID{
-					(plan.ProcedureIDFromOperationID("fromCSV")),
-				},
-				Children: []plan.ProcedureID{range2id},
-			},
-			range2id: {
-				ID: range2id,
-				Spec: &functions.RangeProcedureSpec{
-					Bounds: plan.BoundsSpec{
-						Start: query.Time{
-							IsRelative: true,
-							Relative:   -30 * time.Minute,
-						},
-					},
-				},
-				Bounds: plan.BoundsSpec{
-					Start: query.Time{
-						IsRelative: true,
-						Relative:   -30 * time.Minute,
-					},
-				},
-				Parents: []plan.ProcedureID{
-					(range1id),
-				},
-				Children: []plan.ProcedureID{plan.ProcedureIDFromOperationID("limit")},
-			},
-			plan.ProcedureIDFromOperationID("limit"): {
-				ID: plan.ProcedureIDFromOperationID("limit"),
-				Spec: &functions.LimitProcedureSpec{
-					N: 10,
-				},
-				Bounds: plan.BoundsSpec{
-					Start: query.Time{
-						IsRelative: true,
-						Relative:   -30 * time.Minute,
-					},
-				},
-				Parents: []plan.ProcedureID{
-					range2id,
-				},
-				Children: []plan.ProcedureID{plan.ProcedureIDFromOperationID("mean")},
-			},
-			plan.ProcedureIDFromOperationID("mean"): {
-				ID:   plan.ProcedureIDFromOperationID("mean"),
-				Spec: &functions.MeanProcedureSpec{},
-				Bounds: plan.BoundsSpec{
-					Start: query.Time{
-						IsRelative: true,
-						Relative:   -30 * time.Minute,
-					},
-				},
-				Parents: []plan.ProcedureID{
-					(plan.ProcedureIDFromOperationID("limit")),
-				},
-				Children: nil,
-			},
-		},
-		Results: map[string]plan.YieldSpec{
-			plan.DefaultYieldName: {ID: plan.ProcedureIDFromOperationID("mean")},
-		},
-		Order: []plan.ProcedureID{
-			plan.ProcedureIDFromOperationID("fromCSV"),
-			range1id,
-			range2id,
-			plan.ProcedureIDFromOperationID("limit"),
-			plan.ProcedureIDFromOperationID("mean"),
-		},
-	}
-
-	PhysicalPlanTestHelper(t, lp, want)
-}
-
 func PhysicalPlanTestHelper(t *testing.T, lp *plan.LogicalPlanSpec, want *plan.PlanSpec) {
 	t.Helper()
 
@@ -1352,21 +1298,14 @@ func PhysicalPlanTestHelper(t *testing.T, lp *plan.LogicalPlanSpec, want *plan.P
 		t.Fatal(err)
 	}
 
-	log.Println("GOT: ", got)
-	log.Println("WANT: ", want)
+	//	log.Println("GOT: ", got)
+	//	log.Println("WANT: ", want)
 
 	if !cmp.Equal(got, want, plantest.CmpOptions...) {
 		t.Log("Logical:", plan.Formatted(lp))
 		t.Log("Want Physical:", plan.Formatted(want))
 		t.Log("Got  Physical:", plan.Formatted(got))
 		t.Errorf("unexpected physical plan -want/+got:\n%s", cmp.Diff(want, got, plantest.CmpOptions...))
-
-		if len(got.Procedures) == len(want.Procedures) {
-			for _, pr := range lp.Procedures {
-				log.Println("diff for ", pr.ID)
-				log.Println(cmp.Diff(got.Procedures[pr.ID], want.Procedures[pr.ID], plantest.CmpOptions...))
-			}
-		}
 
 	}
 }
