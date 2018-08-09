@@ -15,6 +15,7 @@ import dashTimeV1 from 'src/dashboards/reducers/dashTimeV1'
 import persistStateEnhancer from './persistStateEnhancer'
 import servicesReducer from 'src/shared/reducers/services'
 import scriptReducer from 'src/flux/reducers/script'
+import sourceReducer from 'src/sources/reducers/sources'
 
 const rootReducer = combineReducers({
   ...statusReducers,
@@ -27,6 +28,7 @@ const rootReducer = combineReducers({
   routing: routerReducer,
   services: servicesReducer,
   script: scriptReducer,
+  sources: sourceReducer,
 })
 
 const composeEnhancers = window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__ || compose

@@ -4,7 +4,7 @@ import {Link} from 'react-router'
 import ConfirmButton from 'src/shared/components/ConfirmButton'
 import ConnectionLink from 'src/sources/components/ConnectionLink'
 
-import {Source} from 'src/types'
+import {Source} from 'src/types/v2'
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
 interface Props {

@@ -2,7 +2,7 @@ import React, {PureComponent, MouseEvent, ChangeEvent} from 'react'
 import {withRouter, WithRouterProps} from 'react-router'
 import {connect} from 'react-redux'
 import _ from 'lodash'
-import {createSource, updateSource} from 'src/shared/apis'
+import {createSource, updateSource} from 'src/sources/apis/v2'
 
 import {
   addSource as addSourceAction,
@@ -28,7 +28,7 @@ import {
 } from 'src/shared/copy/notifications'
 import {ErrorHandling} from 'src/shared/decorators/errors'
 
-import {Source} from 'src/types'
+import {Source} from 'src/types/v2'
 import * as NotificationsActions from 'src/types/actions/notifications'
 
 interface Props extends WithRouterProps {

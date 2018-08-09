@@ -1,10 +1,10 @@
-import reducer, {initialState} from 'src/shared/reducers/sources'
+import reducer, {initialState} from 'src/sources/reducers/sources'
 
 import {updateSource, addSource, loadSources} from 'src/shared/actions/sources'
 
-import {source} from 'test/resources'
+import {source} from 'src/sources/resources'
 
-describe('Shared.Reducers.sources', () => {
+describe('sources reducer', () => {
   it('can LOAD_SOURCES', () => {
     const expected = [{...source, id: '1'}]
     const actual = reducer(initialState, loadSources(expected))

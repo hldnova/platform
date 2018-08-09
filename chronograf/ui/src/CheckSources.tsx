@@ -4,7 +4,7 @@ import {withRouter, InjectedRouter} from 'react-router'
 import {connect} from 'react-redux'
 
 // APIs
-import {getSourceHealth} from 'src/shared/apis/v2/sources'
+import {getSourceHealth} from 'src/sources/apis/v2'
 import {getSourcesAsync} from 'src/shared/actions/sources'
 
 // Actions

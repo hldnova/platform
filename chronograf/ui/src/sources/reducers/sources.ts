@@ -1,4 +1,4 @@
-import {Source} from 'src/types'
+import {Source} from 'src/types/v2'
 import {Action} from 'src/shared/actions/sources'
 
 export const initialState: Source[] = []

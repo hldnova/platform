@@ -14,7 +14,8 @@ import {
   notifySourceDeleteFailed,
 } from 'src/shared/copy/notifications'
 
-import {Source, Notification, Service} from 'src/types'
+import {Source} from 'src/types/v2'
+import {Notification, Service} from 'src/types'
 
 interface Props {
   source: Source

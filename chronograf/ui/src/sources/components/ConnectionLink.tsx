@@ -2,7 +2,7 @@ import React, {PureComponent} from 'react'
 import {Link} from 'react-router'
 import {stripPrefix} from 'src/utils/basepath'
 
-import {Source} from 'src/types'
+import {Source} from 'src/types/v2'
 
 interface Props {
   source: Source
