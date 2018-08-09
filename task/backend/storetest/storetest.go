@@ -73,29 +73,32 @@ from(db:"test") |> range(start:-1h)`
 }
 
 from(db:"test") |> range(start:-1h)`
-	t.Run("happy path", func(t *testing.T) {
-		s := create(t)
-		defer destroy(t, s)
-		if _, err := s.CreateTask(context.Background(), []byte{1}, []byte{2}, script); err != nil {
-			t.Fatal(err)
-		}
-	})
+	s := create(t)
+	defer destroy(t, s)
+
 	for _, args := range []struct {
 		caseName     string
 		org, user    platform.ID
 		name, script string
+		noerr        bool
 	}{
+		{caseName: "happy path", org: []byte{1}, user: []byte{2}, script: script, noerr: true},
 		{caseName: "missing org", org: nil, user: []byte{2}, script: script},
 		{caseName: "missing user", org: []byte{1}, user: nil, script: script},
 		{caseName: "missing name", org: []byte{1}, user: []byte{2}, script: scriptNoName},
 		{caseName: "missing script", org: []byte{1}, user: []byte{2}, script: ""},
+		{caseName: "repeated name and org", org: []byte{1}, user: []byte{3}, script: script},
+		{caseName: "repeated name and user", org: []byte{3}, user: []byte{2}, script: script},
+		{caseName: "repeated name, org, and user", org: []byte{1}, user: []byte{2}, script: script},
 	} {
 		t.Run(args.caseName, func(t *testing.T) {
-			s := create(t)
-			defer destroy(t, s)
+			if _, err := s.CreateTask(context.Background(), args.org, args.user, args.script); (err == nil) != args.noerr {
+				if err != nil {
+					t.Fatalf("expected nil error but got %v", err)
+					return
+				}
+				t.Fatalf("expected err!=nil but got nil instead")
 
-			if _, err := s.CreateTask(context.Background(), args.org, args.user, args.script); err == nil {
-				t.Fatal("expected error but did not receive one")
 			}
 		})
 	}
@@ -113,6 +116,12 @@ from(bucket:"x") |> range(start:-1h)`
 		name: "a task2",
 		cron: "* * * * *",
 	}
+
+from(bucket:"y") |> range(start:-1h)`
+	const script3 = `option task = {
+	name: "a task3",
+	cron: "* * * * *",
+}
 
 from(bucket:"y") |> range(start:-1h)`
 	const scriptNoName = `option task = {
@@ -161,11 +170,27 @@ from(bucket:"y") |> range(start:-1h)`
 			}
 		})
 	}
+	t.Run("name repetition", func(t *testing.T) {
+		s := create(t)
+		defer destroy(t, s)
+		id1, err := s.CreateTask(context.Background(), []byte{1}, []byte{2}, script)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, err = s.CreateTask(context.Background(), []byte{1}, []byte{2}, script2)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := s.ModifyTask(context.Background(), id1, script2); err != backend.ErrTaskNameTaken {
+			t.Fatal("expected ErrTaskNameTaken but did not receive one")
+		}
+
+	})
 }
 
 func testStoreListTasks(t *testing.T, create CreateStoreFunc, destroy DestroyStoreFunc) {
 	const script = `option task = {
-		name: "a task",
+		name: "testStoreListTasks %d",
 		cron: "* * * * *",
 	}
 
@@ -177,7 +202,7 @@ from(db:"test") |> range(start:-1h)`
 		orgID := []byte{1}
 		userID := []byte{2}
 
-		id, err := s.CreateTask(context.Background(), orgID, userID, script)
+		id, err := s.CreateTask(context.Background(), orgID, userID, fmt.Sprintf(script, 0))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -220,7 +245,7 @@ from(db:"test") |> range(start:-1h)`
 			t.Fatalf("expected no results for bad user ID, got %d result(s)", len(ts))
 		}
 
-		newID, err := s.CreateTask(context.Background(), orgID, userID, script)
+		newID, err := s.CreateTask(context.Background(), orgID, userID, fmt.Sprintf(script, 1))
 		if err != nil {
 			t.Fatal(err)
 		}
