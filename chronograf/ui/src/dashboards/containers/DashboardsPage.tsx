@@ -32,10 +32,9 @@ import {
 
 import {Notification} from 'src/types/notifications'
 import {DashboardFile, DashboardCell} from 'src/types/v2/dashboards'
-import {Source, Links, Dashboard} from 'src/types/v2'
+import {Links, Dashboard} from 'src/types/v2'
 
 interface Props {
-  source: Source
   router: InjectedRouter
   links: Links
   handleGetDashboards: typeof getDashboardsAsync
@@ -57,13 +56,11 @@ class DashboardsPage extends PureComponent<Props> {
 
   public render() {
     const {dashboards, notify} = this.props
-    const dashboardLink = `/sources/${this.props.source.id}`
 
     return (
       <div className="page">
-        <PageHeader titleText="Dashboards" sourceIndicator={true} />
+        <PageHeader titleText="Dashboards" sourceIndicator={false} />
         <DashboardsContents
-          dashboardLink={dashboardLink}
           dashboards={dashboards}
           onDeleteDashboard={this.handleDeleteDashboard}
           onCreateDashboard={this.handleCreateDashboard}
@@ -77,10 +74,10 @@ class DashboardsPage extends PureComponent<Props> {
   }
 
   private handleCreateDashboard = async (): Promise<void> => {
-    const {source, links, router, notify} = this.props
+    const {links, router, notify} = this.props
     try {
       const data = await createDashboard(links.dashboards, NEW_DASHBOARD)
-      router.push(`/sources/${source.id}/dashboards/${data.id}`)
+      router.push(`/dashboards/${data.id}`)
     } catch (error) {
       notify(dashboardCreateFailed())
     }
@@ -89,14 +86,14 @@ class DashboardsPage extends PureComponent<Props> {
   private handleCloneDashboard = (dashboard: Dashboard) => async (): Promise<
     void
   > => {
-    const {source, router, links, notify} = this.props
+    const {router, links, notify} = this.props
     const name = `${dashboard.name} (clone)`
     try {
       const data = await createDashboard(links.dashboards, {
         ...dashboard,
         name,
       })
-      router.push(`/sources/${source.id}/dashboards/${data.id}`)
+      router.push(`/dashboards/${data.id}`)
     } catch (error) {
       notify(dashboardCreateFailed())
     }

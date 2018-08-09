@@ -66,10 +66,10 @@ class SideNav extends PureComponent<Props> {
         <NavBlock
           highlightWhen={['dashboards']}
           icon="dash-j"
-          link={`${sourcePrefix}/dashboards`}
+          link="dashboards"
           location={location}
         >
-          <NavHeader link={`${sourcePrefix}/dashboards`} title="Dashboards" />
+          <NavHeader link="dashboards" title="Dashboards" />
         </NavBlock>
         <NavBlock
           highlightWhen={['logs']}

@@ -13,7 +13,7 @@ import ManualRefresh from 'src/shared/components/ManualRefresh'
 import TemplateControlBar from 'src/tempVars/components/TemplateControlBar'
 
 // Actions
-import * as dashboardActions from 'src/dashboards/actions'
+import * as dashboardActions from 'src/dashboards/actions/v2'
 import * as annotationActions from 'src/shared/actions/annotations'
 import * as cellEditorOverlayActions from 'src/dashboards/actions/cellEditorOverlay'
 import * as appActions from 'src/shared/actions/app'
@@ -63,7 +63,7 @@ interface Props extends ManualRefreshProps, WithRouterProps {
     dashboardID: string
   }
   location: Location
-  dashboardID: number
+  dashboardID: string
   dashboard: DashboardsModels.Dashboard
   dashboards: DashboardsModels.Dashboard[]
   handleChooseAutoRefresh: AppActions.SetAutoRefreshActionCreator
@@ -90,19 +90,18 @@ interface Props extends ManualRefreshProps, WithRouterProps {
   thresholdsListColors: ColorsModels.ColorNumber[]
   gaugeColors: ColorsModels.ColorNumber[]
   lineColors: ColorsModels.ColorString[]
+  getDashboard: typeof dashboardActions.getDashboard
   setDashTimeV1: typeof dashboardActions.setDashTimeV1
   setZoomedTimeRange: typeof dashboardActions.setZoomedTimeRange
   updateDashboard: typeof dashboardActions.updateDashboard
   putDashboard: typeof dashboardActions.putDashboard
   putDashboardByID: typeof dashboardActions.putDashboardByID
-  getDashboardsAsync: typeof dashboardActions.getDashboardsAsync
   addDashboardCellAsync: typeof dashboardActions.addDashboardCellAsync
   editCellQueryStatus: typeof dashboardActions.editCellQueryStatus
   updateDashboardCell: typeof dashboardActions.updateDashboardCell
   cloneDashboardCellAsync: typeof dashboardActions.cloneDashboardCellAsync
   deleteDashboardCellAsync: typeof dashboardActions.deleteDashboardCellAsync
   templateVariableLocalSelected: typeof dashboardActions.templateVariableLocalSelected
-  getDashboardWithTemplatesAsync: typeof dashboardActions.getDashboardWithTemplatesAsync
   rehydrateTemplatesAsync: typeof dashboardActions.rehydrateTemplatesAsync
   updateTemplateQueryParams: typeof dashboardActions.updateTemplateQueryParams
   updateQueryParams: typeof dashboardActions.updateQueryParams
@@ -526,7 +525,7 @@ const mstp = (state, {params: {dashboardID}}) => {
   return {
     sources,
     dashboard,
-    dashboardID: Number(dashboardID),
+    dashboardID,
     timeRange,
     zoomedTimeRange,
     autoRefresh,
@@ -547,7 +546,6 @@ const mdtp = {
   updateDashboard: dashboardActions.updateDashboard,
   putDashboard: dashboardActions.putDashboard,
   putDashboardByID: dashboardActions.putDashboardByID,
-  getDashboardsAsync: dashboardActions.getDashboardsAsync,
   addDashboardCellAsync: dashboardActions.addDashboardCellAsync,
   editCellQueryStatus: dashboardActions.editCellQueryStatus,
   updateDashboardCell: dashboardActions.updateDashboardCell,

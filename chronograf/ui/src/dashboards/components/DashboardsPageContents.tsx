@@ -20,7 +20,6 @@ interface Props {
   onExportDashboard: (dashboard: Dashboard) => () => void
   onImportDashboard: (dashboard: Dashboard) => void
   notify: (message: Notification) => void
-  dashboardLink: string
 }
 
 interface State {
@@ -45,7 +44,6 @@ class DashboardsPageContents extends Component<Props, State> {
       onCreateDashboard,
       onCloneDashboard,
       onExportDashboard,
-      dashboardLink,
     } = this.props
 
     return (
@@ -62,7 +60,6 @@ class DashboardsPageContents extends Component<Props, State> {
                     onCreateDashboard={onCreateDashboard}
                     onCloneDashboard={onCloneDashboard}
                     onExportDashboard={onExportDashboard}
-                    dashboardLink={dashboardLink}
                   />
                 </div>
               </div>

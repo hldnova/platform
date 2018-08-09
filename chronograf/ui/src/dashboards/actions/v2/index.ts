@@ -1,6 +1,7 @@
 // Types
 import {Dispatch} from 'redux'
 import {Dashboard} from 'src/types/v2'
+import {replace} from 'react-router-redux'
 
 // APIs
 import {
@@ -117,4 +118,30 @@ export const deleteDashboardAsync = (dashboard: Dashboard) => async (
 
     dispatch(deleteDashboardFailed(dashboard))
   }
+}
+
+export const getDashboard = (dashboardID: string) => async (
+  dispatch
+): Promise<void> => {
+  let dashboard: Dashboard
+
+  try {
+    const resp = await getDashboardAJAX(dashboardID)
+    dashboard = resp.data
+  } catch {
+    dispatch(replace(`/dashboards`))
+    dispatch(notify(dashboardNotFound(dashboardID)))
+
+    return
+  }
+
+  const templates = await hydrateTemplates(dashboard.templates, {
+    proxyUrl: source.links.proxy,
+    selections: templateSelectionsFromQueryParams(),
+  })
+
+  // TODO: Notify if any of the supplied query params were invalid
+  dispatch(loadDashboard({...dashboard, templates}))
+  dispatch(updateTemplateQueryParams(dashboardId))
+  dispatch(updateTimeRangeFromQueryParams(dashboardId))
 }

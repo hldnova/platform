@@ -1,4 +1,3 @@
-import {Source} from 'src/types/sources'
 import {Dashboard, DashboardSwitcherLinks} from 'src/types/dashboards'
 
 export const EMPTY_LINKS = {
@@ -7,14 +6,13 @@ export const EMPTY_LINKS = {
 }
 
 export const linksFromDashboards = (
-  dashboards: Dashboard[],
-  source: Source
+  dashboards: Dashboard[]
 ): DashboardSwitcherLinks => {
   const links = dashboards.map(d => {
     return {
       key: String(d.id),
       text: d.name,
-      to: `/sources/${source.id}/dashboards/${d.id}`,
+      to: `/dashboards/${d.id}`,
     }
   })
 

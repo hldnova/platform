@@ -71,7 +71,7 @@ export class CheckSources extends PureComponent<Props, State> {
 
     if (isDoneLoading && !source) {
       if (defaultSource) {
-        return router.push(`/sources/${defaultSource.id}/${restString}`)
+        return router.push(`${restString}?=sid=${defaultSource.id}`)
       }
 
       if (sources[0]) {

@@ -14,14 +14,12 @@ interface Props {
     dashboard: Dashboard
   ) => (event: MouseEvent<HTMLButtonElement>) => void
   onExportDashboard: (dashboard: Dashboard) => () => void
-  dashboardLink: string
 }
 
 class DashboardsTable extends PureComponent<Props> {
   public render() {
     const {
       dashboards,
-      dashboardLink,
       onCloneDashboard,
       onDeleteDashboard,
       onExportDashboard,
@@ -43,9 +41,7 @@ class DashboardsTable extends PureComponent<Props> {
           {_.sortBy(dashboards, d => d.name.toLowerCase()).map(dashboard => (
             <tr key={dashboard.id}>
               <td>
-                <Link to={`${dashboardLink}/dashboards/${dashboard.id}`}>
-                  {dashboard.name}
-                </Link>
+                <Link to={`/dashboards/${dashboard.id}`}>{dashboard.name}</Link>
               </td>
               <td className="text-right">
                 <button
