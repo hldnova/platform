@@ -5,16 +5,6 @@ import (
 	"fmt"
 )
 
-type Error string
-
-func (e Error) Error() string {
-	return string(e)
-}
-
-const (
-	ErrSourceNotFound = Error("source not found")
-)
-
 // SourceType is a string for types of sources.
 type SourceType string
 

@@ -37,17 +37,15 @@ func (c *Client) initializeSources(ctx context.Context, tx *bolt.Tx) error {
 	}
 
 	_, err := c.findSourceByID(ctx, tx, DefaultSource.ID)
-	if err != nil && err != platform.ErrSourceNotFound {
-		return err
+	if err == nil {
+		return nil
 	}
 
-	if err == platform.ErrSourceNotFound {
-		if err := c.putSource(ctx, tx, &DefaultSource); err != nil {
-			return err
-		}
+	if ee, ok := err.(*platform.Error); ok && ee.Code == platform.ESourceNotFound {
+		return c.putSource(ctx, tx, &DefaultSource)
 	}
 
-	return nil
+	return err
 }
 
 // DefaultSource retrieves the default source.
@@ -97,15 +95,17 @@ func (c *Client) FindSourceByID(ctx context.Context, id platform.ID) (*platform.
 }
 
 func (c *Client) findSourceByID(ctx context.Context, tx *bolt.Tx, id platform.ID) (*platform.Source, error) {
+	const op = platform.ErrOpCode("bolt.findSourceByID")
+
 	v := tx.Bucket(sourceBucket).Get(id)
 
 	if len(v) == 0 {
-		return nil, platform.ErrSourceNotFound
+		return nil, &platform.Error{Code: platform.ESourceNotFound, Op: op}
 	}
 
 	var s platform.Source
 	if err := json.Unmarshal(v, &s); err != nil {
-		return nil, err
+		return nil, &platform.Error{Code: platform.EInternal, Err: err, Op: op}
 	}
 	if err := c.setServices(ctx, &s); err != nil {
 		// this function should not error if the source that is being set is
