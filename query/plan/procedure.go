@@ -107,9 +107,7 @@ type BoundsSpec struct {
 	Stop  query.Time
 }
 
-// [-3, 0]
-// [-2, 2]
-
+// TODO: update to treat non-relative 0 as relative
 func (b BoundsSpec) Union(o BoundsSpec, now time.Time) (u BoundsSpec) {
 	u.Start = b.Start
 	if u.Start.IsZero() || (!o.Start.IsZero() && o.Start.Time(now).Before(b.Start.Time(now))) {
