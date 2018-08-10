@@ -66,14 +66,23 @@ func TestJSONMarshal(t *testing.T) {
 								Value: &ast.StringLiteral{Value: "foo"},
 							},
 							{
-								Key:   &ast.Identifier{Name: "every"},
-								Value: &ast.DurationLiteral{Value: 10 * time.Minute},
+								Key: &ast.Identifier{Name: "every"},
+								Value: &ast.DurationLiteral{
+									Values: []*ast.SingleDurationLiteral{
+										{
+											Mag: &ast.IntegerLiteral{
+												Value: 10,
+											},
+											Unit: "m",
+										},
+									},
+								},
 							},
 						},
 					},
 				},
 			},
-			want: `{"type":"OptionStatement","declaration":{"type":"VariableDeclarator","id":{"type":"Identifier","name":"task"},"init":{"type":"ObjectExpression","properties":[{"type":"Property","key":{"type":"Identifier","name":"name"},"value":{"type":"StringLiteral","value":"foo"}},{"type":"Property","key":{"type":"Identifier","name":"every"},"value":{"type":"DurationLiteral","value":"10m0s"}}]}}}`,
+			want: `{"type":"OptionStatement","declaration":{"type":"VariableDeclarator","id":{"type":"Identifier","name":"task"},"init":{"type":"ObjectExpression","properties":[{"type":"Property","key":{"type":"Identifier","name":"name"},"value":{"type":"StringLiteral","value":"foo"}},{"type":"Property","key":{"type":"Identifier","name":"every"},"value":{"type":"DurationLiteral","values":[{"type":"SingleDurationLiteral","magnitude":{"type":"IntegerLiteral","value":"10"},"unit":"m"}]}}]}}}`,
 		},
 		{
 			name: "variable declaration",
@@ -242,9 +251,22 @@ func TestJSONMarshal(t *testing.T) {
 		{
 			name: "duration literal",
 			node: &ast.DurationLiteral{
-				Value: time.Hour + time.Minute,
+				Values: []*ast.SingleDurationLiteral{
+					{
+						Mag: &ast.IntegerLiteral{
+							Value: 1,
+						},
+						Unit: "h",
+					},
+					{
+						Mag: &ast.IntegerLiteral{
+							Value: 1,
+						},
+						Unit: "m",
+					},
+				},
 			},
-			want: `{"type":"DurationLiteral","value":"1h1m0s"}`,
+			want: `{"type":"DurationLiteral","values":[{"type":"SingleDurationLiteral","magnitude":{"type":"IntegerLiteral","value":"1"},"unit":"h"},{"type":"SingleDurationLiteral","magnitude":{"type":"IntegerLiteral","value":"1"},"unit":"m"}]}`,
 		},
 		{
 			name: "datetime literal",

@@ -753,6 +753,18 @@ func (l *DurationLiteral) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+func (l *SingleDurationLiteral) MarshalJSON() ([]byte, error) {
+	type Alias SingleDurationLiteral
+	raw := struct {
+		Type string `json:"type"`
+		*Alias
+	}{
+		Type:  l.NodeType(),
+		Alias: (*Alias)(l),
+	}
+	return json.Marshal(raw)
+}
+
 func (l *DateTimeLiteral) MarshalJSON() ([]byte, error) {
 	type Alias DateTimeLiteral
 	raw := struct {

@@ -65,12 +65,30 @@ func TestNew(t *testing.T) {
 										Value: &ast.StringLiteral{Value: "foo"},
 									},
 									{
-										Key:   &ast.Identifier{Name: "every"},
-										Value: &ast.DurationLiteral{Value: 1 * time.Hour},
+										Key: &ast.Identifier{Name: "every"},
+										Value: &ast.DurationLiteral{
+											Values: []*ast.SingleDurationLiteral{
+												{
+													Mag: &ast.IntegerLiteral{
+														Value: 1,
+													},
+													Unit: "h",
+												},
+											},
+										},
 									},
 									{
-										Key:   &ast.Identifier{Name: "delay"},
-										Value: &ast.DurationLiteral{Value: 10 * time.Minute},
+										Key: &ast.Identifier{Name: "delay"},
+										Value: &ast.DurationLiteral{
+											Values: []*ast.SingleDurationLiteral{
+												{
+													Mag: &ast.IntegerLiteral{
+														Value: 10,
+													},
+													Unit: "m",
+												},
+											},
+										},
 									},
 									{
 										Key:   &ast.Identifier{Name: "cron"},

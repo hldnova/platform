@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
-	"time"
 )
 
 func (p *Program) MarshalJSON() ([]byte, error) {
@@ -729,34 +728,23 @@ func (l *DurationLiteral) MarshalJSON() ([]byte, error) {
 	raw := struct {
 		Type string `json:"type"`
 		*Alias
-		Value string `json:"value"`
 	}{
 		Type:  l.Type(),
 		Alias: (*Alias)(l),
-		Value: l.Value.String(),
 	}
 	return json.Marshal(raw)
 }
-func (l *DurationLiteral) UnmarshalJSON(data []byte) error {
-	type Alias DurationLiteral
+
+func (l *SingleDurationLiteral) MarshalJSON() ([]byte, error) {
+	type Alias SingleDurationLiteral
 	raw := struct {
+		Type string `json:"type"`
 		*Alias
-		Value string `json:"value"`
-	}{}
-	if err := json.Unmarshal(data, &raw); err != nil {
-		return err
+	}{
+		Type:  l.Type(),
+		Alias: (*Alias)(l),
 	}
-
-	if raw.Alias != nil {
-		*l = *(*DurationLiteral)(raw.Alias)
-	}
-
-	value, err := time.ParseDuration(raw.Value)
-	if err != nil {
-		return err
-	}
-	l.Value = value
-	return nil
+	return json.Marshal(raw)
 }
 
 func (l *DateTimeLiteral) MarshalJSON() ([]byte, error) {
@@ -888,6 +876,8 @@ func unmarshalNode(msg json.RawMessage) (Node, error) {
 	case "RegexpLiteral":
 		node = new(RegexpLiteral)
 	case "DurationLiteral":
+		node = new(DurationLiteral)
+	case "SingleDurationLiteral":
 		node = new(DurationLiteral)
 	case "DateTimeLiteral":
 		node = new(DateTimeLiteral)

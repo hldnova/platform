@@ -3,7 +3,6 @@ package parser_test
 import (
 	"regexp"
 	"testing"
-	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/influxdata/platform/query/ast"
@@ -39,12 +38,30 @@ func TestParse(t *testing.T) {
 										Value: &ast.StringLiteral{Value: "foo"},
 									},
 									{
-										Key:   &ast.Identifier{Name: "every"},
-										Value: &ast.DurationLiteral{Value: 1 * time.Hour},
+										Key: &ast.Identifier{Name: "every"},
+										Value: &ast.DurationLiteral{
+											Values: []*ast.SingleDurationLiteral{
+												{
+													Mag: &ast.IntegerLiteral{
+														Value: 1,
+													},
+													Unit: "h",
+												},
+											},
+										},
 									},
 									{
-										Key:   &ast.Identifier{Name: "delay"},
-										Value: &ast.DurationLiteral{Value: 10 * time.Minute},
+										Key: &ast.Identifier{Name: "delay"},
+										Value: &ast.DurationLiteral{
+											Values: []*ast.SingleDurationLiteral{
+												{
+													Mag: &ast.IntegerLiteral{
+														Value: 10,
+													},
+													Unit: "m",
+												},
+											},
+										},
 									},
 									{
 										Key:   &ast.Identifier{Name: "cron"},
@@ -82,8 +99,17 @@ func TestParse(t *testing.T) {
 										Value: &ast.StringLiteral{Value: "foo"},
 									},
 									{
-										Key:   &ast.Identifier{Name: "every"},
-										Value: &ast.DurationLiteral{Value: 1 * time.Hour},
+										Key: &ast.Identifier{Name: "every"},
+										Value: &ast.DurationLiteral{
+											Values: []*ast.SingleDurationLiteral{
+												{
+													Mag: &ast.IntegerLiteral{
+														Value: 1,
+													},
+													Unit: "h",
+												},
+											},
+										},
 									},
 								},
 							},
@@ -1112,12 +1138,30 @@ a = 5.0
 												Key: &ast.Identifier{Name: "start"},
 												Value: &ast.UnaryExpression{
 													Operator: ast.SubtractionOperator,
-													Argument: &ast.DurationLiteral{Value: time.Hour},
+													Argument: &ast.DurationLiteral{
+														Values: []*ast.SingleDurationLiteral{
+															{
+																Mag: &ast.IntegerLiteral{
+																	Value: 1,
+																},
+																Unit: "h",
+															},
+														},
+													},
 												},
 											},
 											{
-												Key:   &ast.Identifier{Name: "end"},
-												Value: &ast.DurationLiteral{Value: 10 * time.Minute},
+												Key: &ast.Identifier{Name: "end"},
+												Value: &ast.DurationLiteral{
+													Values: []*ast.SingleDurationLiteral{
+														{
+															Mag: &ast.IntegerLiteral{
+																Value: 10,
+															},
+															Unit: "m",
+														},
+													},
+												},
 											},
 										},
 									},
@@ -1202,14 +1246,32 @@ a = 5.0
 													Key: &ast.Identifier{Name: "start"},
 													Value: &ast.UnaryExpression{
 														Operator: ast.SubtractionOperator,
-														Argument: &ast.DurationLiteral{Value: 4 * time.Hour},
+														Argument: &ast.DurationLiteral{
+															Values: []*ast.SingleDurationLiteral{
+																{
+																	Mag: &ast.IntegerLiteral{
+																		Value: 4,
+																	},
+																	Unit: "h",
+																},
+															},
+														},
 													},
 												},
 												{
 													Key: &ast.Identifier{Name: "stop"},
 													Value: &ast.UnaryExpression{
 														Operator: ast.SubtractionOperator,
-														Argument: &ast.DurationLiteral{Value: 2 * time.Hour},
+														Argument: &ast.DurationLiteral{
+															Values: []*ast.SingleDurationLiteral{
+																{
+																	Mag: &ast.IntegerLiteral{
+																		Value: 2,
+																	},
+																	Unit: "h",
+																},
+															},
+														},
 													},
 												},
 											},
@@ -1259,14 +1321,32 @@ a = 5.0
 														Key: &ast.Identifier{Name: "start"},
 														Value: &ast.UnaryExpression{
 															Operator: ast.SubtractionOperator,
-															Argument: &ast.DurationLiteral{Value: 4 * time.Hour},
+															Argument: &ast.DurationLiteral{
+																Values: []*ast.SingleDurationLiteral{
+																	{
+																		Mag: &ast.IntegerLiteral{
+																			Value: 4,
+																		},
+																		Unit: "h",
+																	},
+																},
+															},
 														},
 													},
 													{
 														Key: &ast.Identifier{Name: "stop"},
 														Value: &ast.UnaryExpression{
 															Operator: ast.SubtractionOperator,
-															Argument: &ast.DurationLiteral{Value: 2 * time.Hour},
+															Argument: &ast.DurationLiteral{
+																Values: []*ast.SingleDurationLiteral{
+																	{
+																		Mag: &ast.IntegerLiteral{
+																			Value: 2,
+																		},
+																		Unit: "h",
+																	},
+																},
+															},
 														},
 													},
 												},
@@ -1330,7 +1410,16 @@ join(tables:[a,b], on:["host"], fn: (a,b) => a["_field"] + b["_field"])`,
 													Key: &ast.Identifier{Name: "start"},
 													Value: &ast.UnaryExpression{
 														Operator: ast.SubtractionOperator,
-														Argument: &ast.DurationLiteral{Value: 1 * time.Hour},
+														Argument: &ast.DurationLiteral{
+															Values: []*ast.SingleDurationLiteral{
+																{
+																	Mag: &ast.IntegerLiteral{
+																		Value: 1,
+																	},
+																	Unit: "h",
+																},
+															},
+														},
 													},
 												},
 											},
@@ -1368,7 +1457,16 @@ join(tables:[a,b], on:["host"], fn: (a,b) => a["_field"] + b["_field"])`,
 													Key: &ast.Identifier{Name: "start"},
 													Value: &ast.UnaryExpression{
 														Operator: ast.SubtractionOperator,
-														Argument: &ast.DurationLiteral{Value: 1 * time.Hour},
+														Argument: &ast.DurationLiteral{
+															Values: []*ast.SingleDurationLiteral{
+																{
+																	Mag: &ast.IntegerLiteral{
+																		Value: 1,
+																	},
+																	Unit: "h",
+																},
+															},
+														},
 													},
 												},
 											},
@@ -1495,7 +1593,16 @@ join(tables:[a,b], on:["t1"], fn: (a,b) => (a["_field"] - b["_field"]) / b["_fie
 													Key: &ast.Identifier{Name: "start"},
 													Value: &ast.UnaryExpression{
 														Operator: ast.SubtractionOperator,
-														Argument: &ast.DurationLiteral{Value: 1 * time.Hour},
+														Argument: &ast.DurationLiteral{
+															Values: []*ast.SingleDurationLiteral{
+																{
+																	Mag: &ast.IntegerLiteral{
+																		Value: 1,
+																	},
+																	Unit: "h",
+																},
+															},
+														},
 													},
 												},
 											},
@@ -1558,7 +1665,16 @@ join(tables:[a,b], on:["t1"], fn: (a,b) => (a["_field"] - b["_field"]) / b["_fie
 													Key: &ast.Identifier{Name: "start"},
 													Value: &ast.UnaryExpression{
 														Operator: ast.SubtractionOperator,
-														Argument: &ast.DurationLiteral{Value: 1 * time.Hour},
+														Argument: &ast.DurationLiteral{
+															Values: []*ast.SingleDurationLiteral{
+																{
+																	Mag: &ast.IntegerLiteral{
+																		Value: 1,
+																	},
+																	Unit: "h",
+																},
+															},
+														},
 													},
 												},
 											},
