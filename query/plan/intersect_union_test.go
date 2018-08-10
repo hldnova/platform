@@ -313,10 +313,151 @@ func TestBoundsIntersect(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "start stop zero",
+			a:    plan.BoundsSpec{},
+			b: plan.BoundsSpec{
+				Start: query.Time{
+					Absolute: time.Unix(1, 0),
+				},
+				Stop: query.Time{
+					Absolute: time.Unix(3, 0),
+				},
+			},
+			want: plan.BoundsSpec{
+				Start: query.Time{
+					Absolute: time.Unix(1, 0),
+				},
+				Stop: query.Time{
+					Absolute: time.Unix(3, 0),
+				},
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			got := tt.a.Intersect(tt.b, time.Now())
+			if !cmp.Equal(got, tt.want) {
+				t.Errorf("unexpected bounds -want/+got:\n%s", cmp.Diff(tt.want, got, plantest.CmpOptions...))
+			}
+		})
+	}
+}
+
+func TestBounds_Union(t *testing.T) {
+	tests := []struct {
+		name string
+		a, b plan.BoundsSpec
+		want plan.BoundsSpec
+	}{
+		{
+			name: "basic case",
+			a: plan.BoundsSpec{
+				Start: query.Time{
+
+					Absolute: time.Unix(1, 0),
+				},
+				Stop: query.Time{
+					Absolute: time.Unix(3, 0),
+				},
+			},
+			b: plan.BoundsSpec{
+				Start: query.Time{
+					Absolute: time.Unix(2, 0),
+				},
+				Stop: query.Time{
+					Absolute: time.Unix(4, 0),
+				},
+			},
+			want: plan.BoundsSpec{
+				Start: query.Time{
+					Absolute: time.Unix(1, 0),
+				},
+				Stop: query.Time{
+					Absolute: time.Unix(4, 0),
+				},
+			},
+		},
+		{
+			name: "basic case relative",
+			a: plan.BoundsSpec{
+				Start: query.Time{
+					IsRelative: true,
+					Relative:   -1 * time.Hour,
+				},
+			},
+			b: plan.BoundsSpec{
+				Start: query.Time{
+					IsRelative: true,
+					Relative:   -30 * time.Minute,
+				},
+			},
+			want: plan.BoundsSpec{
+				Start: query.Time{
+					IsRelative: true,
+					Relative:   -1 * time.Hour,
+				},
+			},
+		},
+		{
+			name: "bounds in future",
+			a: plan.BoundsSpec{
+				Start: query.Time{
+					IsRelative: true,
+					Relative:   -2 * time.Hour,
+				},
+			},
+			b: plan.BoundsSpec{
+				Start: query.Time{
+					IsRelative: true,
+					Relative:   -1 * time.Hour,
+				},
+				Stop: query.Time{
+					IsRelative: true,
+					Relative:   2 * time.Hour,
+				},
+			},
+			want: plan.BoundsSpec{
+				Start: query.Time{
+					IsRelative: true,
+					Relative:   -2 * time.Hour,
+				},
+				Stop: query.Time{
+					IsRelative: true,
+					Relative:   2 * time.Hour,
+				},
+			},
+		},
+		{
+			name: "one stop zero, one not",
+			a: plan.BoundsSpec{
+				Start: query.Time{
+					IsRelative: true,
+					Relative:   -2 * time.Hour,
+				},
+			},
+			b: plan.BoundsSpec{
+				Start: query.Time{
+					IsRelative: true,
+					Relative:   -3 * time.Hour,
+				},
+				Stop: query.Time{
+					IsRelative: true,
+					Relative:   -2 * time.Hour,
+				},
+			},
+			want: plan.BoundsSpec{
+				Start: query.Time{
+					IsRelative: true,
+					Relative:   -3 * time.Hour,
+				},
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := tt.a.Union(tt.b, time.Now())
 			if !cmp.Equal(got, tt.want) {
 				t.Errorf("unexpected bounds -want/+got:\n%s", cmp.Diff(tt.want, got, plantest.CmpOptions...))
 			}

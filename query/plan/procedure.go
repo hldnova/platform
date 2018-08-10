@@ -107,28 +107,7 @@ type BoundsSpec struct {
 	Stop  query.Time
 }
 
-// TODO: update to treat non-relative 0 as relative
 func (b BoundsSpec) Union(o BoundsSpec, now time.Time) (u BoundsSpec) {
-	u.Start = b.Start
-	if u.Start.IsZero() || (!o.Start.IsZero() && o.Start.Time(now).Before(b.Start.Time(now))) {
-		u.Start = o.Start
-	}
-	u.Stop = b.Stop
-	if u.Stop.IsZero() || (!o.Start.IsZero() && o.Stop.Time(now).After(b.Stop.Time(now))) {
-		u.Stop = o.Stop
-	}
-	return
-}
-
-// NOTE: if either b.Start or o.Start are both relative or non-zero, and b.Stop or o.Stop are non-relative zero,
-// It is assumed that b.Stop and/or o.Stop are meant to be relative zero (i.e., `now`) to make the logic work for all cases.
-// Ex: b = [now - 1h, Unix(0)], o = [now - 2h, Unix(0)]
-// in this case, the upper bound of 0 for both b and o becomes `now`. So the bounds are actually:
-// [now - 1h, now], [now - 2h, now], and we can get the expected result of [now - 1h, now]
-
-// Intersect returns the intersection of two bounds. If there is no intersection,
-// the first bounds are returned.
-func (b BoundsSpec) Intersect(o BoundsSpec, now time.Time) (i BoundsSpec) {
 	var bStop query.Time
 	if !b.Start.IsZero() && b.Stop.IsZero() {
 		bStop.IsRelative = true
@@ -143,14 +122,49 @@ func (b BoundsSpec) Intersect(o BoundsSpec, now time.Time) (i BoundsSpec) {
 		oStop = o.Stop
 	}
 
-	if (b.Start.IsZero() || (o.Start.Time(now).After(b.Start.Time(now)))) &&
+	if b.Start.IsZero() || (!o.Start.IsZero() && o.Start.Time(now).Before(b.Start.Time(now))) {
+		u.Start = o.Start
+	} else {
+		u.Start = b.Start
+	}
+
+	if bStop.IsZero() || (oStop.Time(now).After(bStop.Time(now))) {
+		u.Stop = o.Stop
+	} else {
+		u.Stop = b.Stop
+	}
+
+	return
+}
+
+// Intersect returns the intersection of two bounds. If there is no intersection,
+// the first bounds are returned. If start is not set, the start bounds of the other provided bounds are
+// automatically used. If stop is not set, it is assumed to be the current time for the purposes of
+// logic.
+func (b BoundsSpec) Intersect(o BoundsSpec, now time.Time) (i BoundsSpec) {
+	// bStop and oStop are temporary adjusted variables to be used in this function
+	var bStop query.Time
+	if !b.Start.IsZero() && b.Stop.IsZero() {
+		bStop.IsRelative = true
+	} else {
+		bStop = b.Stop
+	}
+
+	var oStop query.Time
+	if !o.Start.IsZero() && o.Stop.IsZero() {
+		oStop.IsRelative = true
+	} else {
+		oStop = o.Stop
+	}
+
+	if b.Start.IsZero() || (o.Start.Time(now).After(b.Start.Time(now))) &&
 		(o.Start.Time(now).Before(bStop.Time(now))) {
 		i.Start = o.Start
 	} else {
 		i.Start = b.Start
 	}
 
-	if oStop.Time(now).Before(bStop.Time(now)) &&
+	if bStop.IsZero() || oStop.Time(now).Before(bStop.Time(now)) &&
 		(o.Stop.Time(now).After(b.Start.Time(now))) {
 		i.Stop = o.Stop
 	} else {
