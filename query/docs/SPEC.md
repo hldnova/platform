@@ -850,6 +850,9 @@ Yield has the following properties:
 * `name` string
     unique name to give to yielded results
 
+Example:
+`from(db: "telegraf") |> range(start: -5m) |> yield(name:"1")`
+
 #### Aggregate operations
 
 Aggregate operations output a table for every input table they receive.
@@ -896,10 +899,16 @@ Covariance has the following properties:
 
 Additionally exactly two columns must be provided to the `columns` property.
 
+Example:
+`from(db: "telegraf) |> range(start:-5m) |> covariance(columns: ["x", "y"])`
+
 ##### Count
 
 Count is an aggregate operation.
 For each aggregated column, it outputs the number of non null records as an integer.
+
+Example:
+`from(db: "telegraf") |> range(start: -5m) |> count()`
 
 ##### Integral
 
@@ -912,10 +921,29 @@ Integral has the following properties:
 * `unit` duration
     unit is the time duration to use when computing the integral
 
+Example: 
+
+```
+from(db: "telegraf") 
+    |> range(start: -5m) 
+    |> filter(fn: (r) => r._measurement == "cpu" and r._field == "usage_system") 
+    |> integral(unit:10s)
+```
+
 ##### Mean
 
 Mean is an aggregate operation.
 For each aggregated column, it outputs the mean of the non null records as a float.
+
+Example: 
+```
+from(db:"telegraf")
+    |> filter(fn: (r) => r["_measurement"] == "mem" AND
+            r["_field"] == "used_percent")
+    |> range(start:-12h)
+    |> window(every:10m)
+    |> mean()
+```
 
 ##### Percentile
 
@@ -935,10 +963,29 @@ Percentile has the following properties:
    A larger number produces a more accurate result at the cost of increased memory requirements.
    Defaults to 1000.
 
+Example:
+```
+// Determine 99th percentile cpu system usage:
+from(db: "telegraf")
+	|> range(start: -5m)
+	|> filter(fn: (r) => r._measurement == "cpu" and r._field == "usage_system")
+	|> percentile(p: 0.99)
+```
+
 ##### Skew
 
 Skew is an aggregate operation.
 For each aggregated column, it outputs the skew of the non null record as a float.
+
+Example:
+
+```
+from(db:"telegraf")
+    |> filter(fn: (r) => r["_measurement"] == "system" AND
+               r["_field"] == "uptime")
+    |> range(start:-12h)
+    |> sort(cols:["region", "host", "value"])
+```
 
 ##### Spread
 
@@ -947,16 +994,23 @@ For each aggregated column, it outputs the difference between the min and max va
 The type of the output column depends on the type of input column: for input columns with type `uint` or `int`, the output is an `int`; for `float` input columns the output is a `float`.
 All other input types are invalid.
 
+Example: 
+`from(db: "telegraf") |> range(start: -30m) |> spread()`
 ##### Stddev
 
 Stddev is an aggregate operation.
 For each aggregated column, it outputs the standard deviation of the non null record as a float.
+
+Example:
+`from(db: "telegraf") |> range(start: -30m, stop: -15m) |> stddev()`
 
 ##### Sum
 
 Stddev is an aggregate operation.
 For each aggregated column, it outputs the sum of the non null record.
 The output column type is the same as the input column type.
+
+`from(db: "telegraf") |> range(start: -30m, stop: -15m) |> sum()`
 
 #### Multiple aggregates
 
@@ -988,20 +1042,47 @@ All selector operations have the following properties:
 First is a selector operation.
 First selects the first non null record from the input table.
 
+Example:
+`from(db:"telegraf") |> range(start:-1m) |> group(by:["host"]) |> first()`
+
 ##### Last
 
 Last is a selector operation.
 Last selects the last non null record from the input table.
+
+Example:
+`from(db: "telegraf") |> last()`
 
 ##### Max
 
 Max is a selector operation.
 Max selects the maximum record from the input table.
 
+Example:
+```
+from(db:"telegraf")
+    |> filter(fn: (r) => r["_measurement"]=="cpu" AND
+                r["_field"] == "usage_system" AND
+                r["service"] == "app-server")
+    |> range(start:-12h)
+    |> window(every:10m)
+    |> max()
+```
+
 ##### Min
 
 Min is a selector operation.
 Min selects the minimum record from the input table.
+
+Example: 
+
+```
+from(db:"telegraf")
+    |> filter(fn: (r) => r[ "_measurement"] == "cpu" AND r["_field" ] == "usage_system")
+    |> range(start:-12h)
+    |> window(every:10m, period: 5m)
+    |> min()
+```
 
 ##### Sample
 
@@ -1017,6 +1098,16 @@ The following properties define how the sample is selected.
     The `pos` must be less than `n`.
     If `pos` is less than 0, a random offset is used.
     Default is -1 (random offset).
+
+Example:
+
+```
+from(db:"telegraf")
+    |> filter(fn: (r) => r["_measurement"] == "cpu" AND
+               r["_field"] == "usage_system")
+    |> range(start:-1d)
+    |> sample(n: 5, pos: 1)
+```
 
 
 #### Filter
@@ -1034,6 +1125,17 @@ Filter has the following properties:
     Records which evaluate to true, will be included in the output tables.
     TODO(nathanielc): Do we need a syntax for expressing type signatures?
 
+Example: 
+
+```
+from(db:"telegraf")
+    |> filter(fn: (r) => r["_measurement"]=="cpu" AND
+                r["_field"] == "usage_system" AND
+                r["service"] == "app-server")
+    |> range(start:-12h)
+    |> max()
+```
+
 #### Limit
 
 Limit caps the number of records in output tables to a fixed size n.
@@ -1045,6 +1147,8 @@ Limit has the following properties:
 
 * `n` int
     The maximum number of records to output.
+
+Example: `from(db: "telegraf") |> limit(n: 10)`
 
 #### Map
 
@@ -1066,6 +1170,17 @@ Map has the following properties:
     When not merging, only columns defined on the returned record will be present on the output records.
     Defaults to true.
 
+Example:
+```
+from(db:"telegraf")
+    |> filter(fn: (r) => r["_measurement"]=="cpu" AND
+                r["_field"] == "usage_system" AND
+                r["service"] == "app-server")
+    |> range(start:-12h)
+    // Square the value
+    |> map(fn: (r) => r._value * r._value)
+```
+
 #### Range
 
 Range filters records based on provided time bounds.
@@ -1083,6 +1198,14 @@ Range has the following properties:
 * `stop` duration or timestamp
     Specifies the exclusive newest time to be included in the results.
     Defaults to "now"
+
+Example:
+```
+from(db:"telegraf")
+    |> filter(fn: (r) => r["_measurement"] == "cpu" AND
+               r["_field"] == "usage_system")
+    |> range(start:-12h, stop: -15m)
+```
 
 #### Rename 
 
@@ -1157,6 +1280,10 @@ Set has the following properties:
 * `value` string
     value is the string value to set
 
+Example: 
+```
+from(db: "telegraf") |> set(key: "mykey", value: "myvalue")
+```
 
 #### Sort
 
@@ -1171,6 +1298,15 @@ Sort has the following properties:
     Default is `["_value"]`
 * `desc` bool
     Sort results in descending order.
+
+Example:
+```
+from(db:"telegraf")
+    |> filter(fn: (r) => r["_measurement"] == "system" AND
+               r["_field"] == "uptime")
+    |> range(start:-12h)
+    |> sort(cols:["region", "host", "value"])
+```
 
 
 #### Group
@@ -1193,6 +1329,9 @@ Examples:
     group(except:["_time", "region", "_value"]) // group records by all other columns except for _time, region, and _value
     group(by:[]) // group all records into a single group
     group(except:[]) // group records into all unique groups
+```
+from(db: "telegraf") |> range(start: -30m) |> group(by: ["tag_a", "tag_b"])
+```
 
 [IMPL#322](https://github.com/influxdata/platform/query/issues/322) Investigate always keeping all columns in group.
 
@@ -1223,6 +1362,14 @@ Window has the following properties:
 * `stopCol` string
     Name of the column containing the window stop time. Defaults to `_stop`.
 
+Example: 
+```
+from(db:"telegraf")
+    |> range(start:-12h)
+    |> window(every:10m)
+    |> max()
+```
+
 [IMPL#319](https://github.com/influxdata/platform/query/issues/319) Remove concept of Bounds from tables
 
 #### Collate
@@ -1249,7 +1396,12 @@ Join has the following properties:
     The parameter is an object where the value of each key is a corresponding record from the input streams.
     The return value must be an object which defines the output record structure.
 
-
+Example:
+```
+cpu = from(db: "telegraf") |> filter(fn: (r) => r["_measurement"] == "cpu" and r["_field"] == "usage_user") |> range(start: -30m)
+mem = from(db: "telegraf") |> filter(fn: (r) => r["_measurement"] == "mem" and r["_field"] == "used_percent") |> range(start: -30m)
+join(tables:{cpu:cpu, mem:mem}, on:["host"], fn: (tables) => tables.cpu["_value"] + tables.mem["_value"])
+```
 
 #### Cumulative sum
 
@@ -1260,6 +1412,14 @@ Cumulative sum has the following properties:
 
 * `columns` list string
     columns is a list of columns on which to operate.
+
+Example:
+```
+from(db: "telegraf")
+    |> range(start: -5m)
+    |> filter(fn: (r) => r._measurement == "disk" and r._field == "used_percent")
+    |> cumulativeSum(columns: ["_value"])
+```
 
 #### Derivative
 
@@ -1278,6 +1438,13 @@ Derivative has the following properties:
     timeSrc is the source column for the time values.
     Defaults to `_time`.
 
+```
+from(db: "telegraf")
+    |> range(start: -5m)
+    |> filter(fn: (r) => r._measurement == "disk" and r._field == "used_percent")
+    |> derivative(nonNegative: true, columns: ["used_percent"])
+```
+
 #### Difference
 
 Difference computes the difference between subsequent non null records.
@@ -1290,6 +1457,13 @@ Difference has the following properties:
 * `columns` list strings
     columns is a list of columns on which to compute the difference.
 
+```
+from(db: "telegraf")
+    |> range(start: -5m)
+    |> filter(fn: (r) => r._measurement == "cpu" and r._field == "usage_user")
+    |> difference()
+    |> limit(n: 1)
+```
 #### Distinct
 
 Distinct produces the unique values for a given column.
@@ -1299,6 +1473,13 @@ Distinct has the following properties:
 * `column` string
     column the column on which to track unique values.
 
+Example: 
+```
+from(db: "telegraf")
+	|> range(start: -5m)
+	|> filter(fn: (r) => r._measurement == "cpu")
+	|> distinct(column: "host")
+```
 
 #### Shift
 
@@ -1313,6 +1494,13 @@ Shift has the following properties:
 * `columns` list of strings
     columns is the list of all columns that should be shifted.
     Defaults to `["_start", "_stop", "_time"]`
+
+Example:
+```
+from(db: "telegraf")
+	|> range(start: -5m)
+	|> shift(shift: 1000h)
+```
 
 #### Type conversion operations
 
