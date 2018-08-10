@@ -57,6 +57,7 @@ func (*Identifier) node() {}
 func (*BooleanLiteral) node()         {}
 func (*DateTimeLiteral) node()        {}
 func (*DurationLiteral) node()        {}
+func (*SingleDurationLiteral) node()  {}
 func (*FloatLiteral) node()           {}
 func (*IntegerLiteral) node()         {}
 func (*PipeLiteral) node()            {}
@@ -252,6 +253,7 @@ func (*CallExpression) expression()          {}
 func (*ConditionalExpression) expression()   {}
 func (*DateTimeLiteral) expression()         {}
 func (*DurationLiteral) expression()         {}
+func (*SingleDurationLiteral) expression()   {}
 func (*FloatLiteral) expression()            {}
 func (*Identifier) expression()              {}
 func (*IntegerLiteral) expression()          {}
@@ -660,6 +662,7 @@ type Literal interface {
 func (*BooleanLiteral) literal()         {}
 func (*DateTimeLiteral) literal()        {}
 func (*DurationLiteral) literal()        {}
+func (*SingleDurationLiteral) literal()  {}
 func (*FloatLiteral) literal()           {}
 func (*IntegerLiteral) literal()         {}
 func (*PipeLiteral) literal()            {}
@@ -796,7 +799,7 @@ func (l *RegexpLiteral) Copy() Node {
 // TODO: this may be better as a class initialization
 type DurationLiteral struct {
 	*BaseNode
-	Value time.Duration `json:"value"`
+	Values []*SingleDurationLiteral `json:"values"`
 }
 
 // Type is the abstract type
@@ -807,6 +810,24 @@ func (l *DurationLiteral) Copy() Node {
 		return l
 	}
 	nl := new(DurationLiteral)
+	*nl = *l
+	return nl
+}
+
+type SingleDurationLiteral struct {
+	*BaseNode
+	Mag  *IntegerLiteral `json:"magnitude"`
+	Unit string          `json:"unit"`
+}
+
+// Type is the abstract type
+func (*SingleDurationLiteral) Type() string { return "SingleDurationLiteral" }
+
+func (l *SingleDurationLiteral) Copy() Node {
+	if l == nil {
+		return l
+	}
+	nl := new(SingleDurationLiteral)
 	*nl = *l
 	return nl
 }

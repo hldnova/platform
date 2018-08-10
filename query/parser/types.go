@@ -329,14 +329,23 @@ func regexLiteral(chars interface{}, text []byte, pos position) (*ast.RegexpLite
 	}, nil
 }
 
-func durationLiteral(text []byte, pos position) (*ast.DurationLiteral, error) {
-	d, err := time.ParseDuration(string(text))
-	if err != nil {
-		return nil, err
+func durationLiteral(durations interface{}, text []byte, pos position) (*ast.DurationLiteral, error) {
+	durationList := toIfaceSlice(durations)
+	singleDurations := make([]*ast.SingleDurationLiteral, len(durationList))
+	for i, lit := range durationList {
+		singleDurations[i] = lit.(*ast.SingleDurationLiteral)
 	}
 	return &ast.DurationLiteral{
 		BaseNode: base(text, pos),
-		Value:    d,
+		Values:   singleDurations,
+	}, nil
+}
+
+func singleDurationLiteral(mag, unit interface{}, text []byte, pos position) (*ast.SingleDurationLiteral, error) {
+	return &ast.SingleDurationLiteral{
+		BaseNode: base(text, pos),
+		Mag:      mag.(*ast.IntegerLiteral),
+		Unit:     string(unit.([]byte)),
 	}, nil
 }
 

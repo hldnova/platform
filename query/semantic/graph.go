@@ -47,6 +47,7 @@ func (*FunctionParam) node() {}
 func (*BooleanLiteral) node()         {}
 func (*DateTimeLiteral) node()        {}
 func (*DurationLiteral) node()        {}
+func (*SingleDurationLiteral) node()  {}
 func (*FloatLiteral) node()           {}
 func (*IntegerLiteral) node()         {}
 func (*StringLiteral) node()          {}
@@ -78,6 +79,7 @@ func (*CallExpression) expression()         {}
 func (*ConditionalExpression) expression()  {}
 func (*DateTimeLiteral) expression()        {}
 func (*DurationLiteral) expression()        {}
+func (*SingleDurationLiteral) expression()  {}
 func (*FloatLiteral) expression()           {}
 func (*FunctionExpression) expression()     {}
 func (*IdentifierExpression) expression()   {}
@@ -98,6 +100,7 @@ type Literal interface {
 func (*BooleanLiteral) literal()         {}
 func (*DateTimeLiteral) literal()        {}
 func (*DurationLiteral) literal()        {}
+func (*SingleDurationLiteral) literal()  {}
 func (*FloatLiteral) literal()           {}
 func (*IntegerLiteral) literal()         {}
 func (*RegexpLiteral) literal()          {}
@@ -670,6 +673,23 @@ func (l *DurationLiteral) Copy() Node {
 		return l
 	}
 	nl := new(DurationLiteral)
+	*nl = *l
+
+	return nl
+}
+
+type SingleDurationLiteral struct {
+	Value time.Duration `json:"value"`
+}
+
+func (*SingleDurationLiteral) NodeType() string { return "SingleDurationLiteral" }
+func (*SingleDurationLiteral) Type() Type       { return Duration }
+
+func (l *SingleDurationLiteral) Copy() Node {
+	if l == nil {
+		return l
+	}
+	nl := new(SingleDurationLiteral)
 	*nl = *l
 
 	return nl
@@ -1324,9 +1344,41 @@ func analyzeDateTimeLiteral(lit *ast.DateTimeLiteral, declarations DeclarationSc
 	}, nil
 }
 func analyzeDurationLiteral(lit *ast.DurationLiteral, declarations DeclarationScope) (*DurationLiteral, error) {
+	var duration time.Duration
+	for _, literal := range lit.Values {
+		dur, err := analyzeSingleDurationLiteral(literal, declarations)
+		if err != nil {
+			return nil, err
+		}
+		duration += dur.Value
+	}
 	return &DurationLiteral{
-		Value: lit.Value,
+		Value: duration,
 	}, nil
+}
+func analyzeSingleDurationLiteral(lit *ast.SingleDurationLiteral, declarations DeclarationScope) (*SingleDurationLiteral, error) {
+	var dur time.Duration
+	var mag *IntegerLiteral
+	var err error
+	mag, err = analyzeIntegerLiteral(lit.Mag, declarations)
+	if err != nil {
+		return nil, err
+	}
+	switch lit.Unit {
+	case "w":
+		mag.Value *= 7
+		lit.Unit = "d"
+		fallthrough
+	case "d":
+		mag.Value *= 24
+		lit.Unit = "h"
+		fallthrough
+	default:
+		dur, err = time.ParseDuration(strconv.FormatInt(int64(mag.Value), 10) + lit.Unit)
+	}
+	return &SingleDurationLiteral{
+		Value: dur,
+	}, err
 }
 func analyzeFloatLiteral(lit *ast.FloatLiteral, declarations DeclarationScope) (*FloatLiteral, error) {
 	return &FloatLiteral{
