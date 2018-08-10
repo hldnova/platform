@@ -43,13 +43,13 @@ func TestBoundsIntersect(t *testing.T) {
 			a: plan.BoundsSpec{
 				Start: query.Time{
 					IsRelative: true,
-					Relative:   -1 * time.Hour,
+					Relative:   -30 * time.Minute,
 				},
 			},
 			b: plan.BoundsSpec{
 				Start: query.Time{
 					IsRelative: true,
-					Relative:   -30 * time.Minute,
+					Relative:   -1 * time.Hour,
 				},
 			},
 			want: plan.BoundsSpec{
@@ -89,12 +89,6 @@ func TestBoundsIntersect(t *testing.T) {
 			a: plan.BoundsSpec{
 				Start: query.Time{
 					IsRelative: true,
-					Relative:   -1 * time.Hour,
-				},
-			},
-			b: plan.BoundsSpec{
-				Start: query.Time{
-					IsRelative: true,
 					Relative:   -3 * time.Hour,
 				},
 				Stop: query.Time{
@@ -102,10 +96,20 @@ func TestBoundsIntersect(t *testing.T) {
 					Relative:   -2 * time.Hour,
 				},
 			},
-			want: plan.BoundsSpec{
+			b: plan.BoundsSpec{
 				Start: query.Time{
 					IsRelative: true,
 					Relative:   -1 * time.Hour,
+				},
+			},
+			want: plan.BoundsSpec{
+				Start: query.Time{
+					IsRelative: true,
+					Relative:   -3 * time.Hour,
+				},
+				Stop: query.Time{
+					IsRelative: true,
+					Relative:   -2 * time.Hour,
 				},
 			},
 		},
@@ -143,17 +147,17 @@ func TestBoundsIntersect(t *testing.T) {
 			a: plan.BoundsSpec{
 				Start: query.Time{
 					IsRelative: true,
-					Relative:   -1 * time.Hour,
-				},
-			},
-			b: plan.BoundsSpec{
-				Start: query.Time{
-					IsRelative: true,
 					Relative:   -2 * time.Hour,
 				},
 				Stop: query.Time{
 					IsRelative: true,
 					Relative:   -30 * time.Minute,
+				},
+			},
+			b: plan.BoundsSpec{
+				Start: query.Time{
+					IsRelative: true,
+					Relative:   -1 * time.Hour,
 				},
 			},
 			want: plan.BoundsSpec{
@@ -193,19 +197,119 @@ func TestBoundsIntersect(t *testing.T) {
 			a: plan.BoundsSpec{
 				Stop: query.Time{
 					IsRelative: true,
-					Relative:   -1 * time.Hour,
+					Relative:   -20 * time.Minute,
 				},
 			},
 			b: plan.BoundsSpec{
 				Stop: query.Time{
 					IsRelative: true,
-					Relative:   -20 * time.Minute,
+					Relative:   -1 * time.Hour,
 				},
 			},
 			want: plan.BoundsSpec{
 				Stop: query.Time{
 					IsRelative: true,
 					Relative:   -1 * time.Hour,
+				},
+			},
+		},
+		{
+			name: "absolute times",
+			a: plan.BoundsSpec{
+				Start: query.Time{
+					Absolute: time.Unix(1, 0),
+				},
+				Stop: query.Time{
+					Absolute: time.Unix(3, 0),
+				},
+			},
+			b: plan.BoundsSpec{
+				Start: query.Time{
+					Absolute: time.Unix(4, 0),
+				},
+				Stop: query.Time{
+					Absolute: time.Unix(5, 0),
+				},
+			},
+			want: plan.BoundsSpec{
+				Start: query.Time{
+					Absolute: time.Unix(1, 0),
+				},
+				Stop: query.Time{
+					Absolute: time.Unix(3, 0),
+				},
+			},
+		},
+		{
+			name: "absolute times sym",
+			a: plan.BoundsSpec{
+				Start: query.Time{
+					Absolute: time.Unix(4, 0),
+				},
+				Stop: query.Time{
+					Absolute: time.Unix(5, 0),
+				},
+			},
+			b: plan.BoundsSpec{
+				Start: query.Time{
+					Absolute: time.Unix(1, 0),
+				},
+				Stop: query.Time{
+					Absolute: time.Unix(3, 0),
+				},
+			},
+			want: plan.BoundsSpec{
+				Start: query.Time{
+					Absolute: time.Unix(4, 0),
+				},
+				Stop: query.Time{
+					Absolute: time.Unix(5, 0),
+				},
+			},
+		},
+		{
+			name: "relative bounds future",
+			a: plan.BoundsSpec{
+				Stop: query.Time{
+					IsRelative: true,
+					Relative:   5 * time.Hour,
+				},
+			},
+			b: plan.BoundsSpec{
+				Stop: query.Time{
+					IsRelative: true,
+					Relative:   3 * time.Hour,
+				},
+			},
+			want: plan.BoundsSpec{
+				Stop: query.Time{
+					IsRelative: true,
+					Relative:   3 * time.Hour,
+				},
+			},
+		},
+		{
+			name: "relative bounds 2",
+			a: plan.BoundsSpec{
+				Start: query.Time{
+					IsRelative: true,
+					Relative:   -3 * time.Hour,
+				},
+			},
+			b: plan.BoundsSpec{
+				Start: query.Time{
+					IsRelative: true,
+					Relative:   -2 * time.Hour,
+				},
+				Stop: query.Time{
+					IsRelative: true,
+					Relative:   2 * time.Hour,
+				},
+			},
+			want: plan.BoundsSpec{
+				Start: query.Time{
+					IsRelative: true,
+					Relative:   -2 * time.Hour,
 				},
 			},
 		},

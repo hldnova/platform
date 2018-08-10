@@ -107,6 +107,9 @@ type BoundsSpec struct {
 	Stop  query.Time
 }
 
+// [-3, 0]
+// [-2, 2]
+
 func (b BoundsSpec) Union(o BoundsSpec, now time.Time) (u BoundsSpec) {
 	u.Start = b.Start
 	if u.Start.IsZero() || (!o.Start.IsZero() && o.Start.Time(now).Before(b.Start.Time(now))) {
@@ -119,20 +122,43 @@ func (b BoundsSpec) Union(o BoundsSpec, now time.Time) (u BoundsSpec) {
 	return
 }
 
+// NOTE: if either b.Start or o.Start are both relative or non-zero, and b.Stop or o.Stop are non-relative zero,
+// It is assumed that b.Stop and/or o.Stop are meant to be relative zero (i.e., `now`) to make the logic work for all cases.
+// Ex: b = [now - 1h, Unix(0)], o = [now - 2h, Unix(0)]
+// in this case, the upper bound of 0 for both b and o becomes `now`. So the bounds are actually:
+// [now - 1h, now], [now - 2h, now], and we can get the expected result of [now - 1h, now]
+
 // Intersect returns the intersection of two bounds. If there is no intersection,
-// the first bounds are returned
-// [0, 2]
-// [0, 1]
+// the first bounds are returned.
 func (b BoundsSpec) Intersect(o BoundsSpec, now time.Time) (i BoundsSpec) {
-	i.Start = b.Start
-	if i.Start.IsZero() && o.Start.Time(now).Before(b.Stop.Time(now)) || o.Start.Time(now).After(b.Start.Time(now)) {
-		i.Start = o.Start
+	var bStop query.Time
+	if !b.Start.IsZero() && b.Stop.IsZero() {
+		bStop.IsRelative = true
+	} else {
+		bStop = b.Stop
 	}
 
-	i.Stop = b.Stop
-	if i.Stop.IsZero() && o.Stop.Time(now).After(b.Start.Time(now)) || o.Stop.Time(now).Before(b.Stop.Time(now)) {
-		i.Stop = o.Stop
+	var oStop query.Time
+	if !o.Start.IsZero() && o.Stop.IsZero() {
+		oStop.IsRelative = true
+	} else {
+		oStop = o.Stop
 	}
+
+	if (b.Start.IsZero() || (o.Start.Time(now).After(b.Start.Time(now)))) &&
+		(o.Start.Time(now).Before(bStop.Time(now))) {
+		i.Start = o.Start
+	} else {
+		i.Start = b.Start
+	}
+
+	if oStop.Time(now).Before(bStop.Time(now)) &&
+		(o.Stop.Time(now).After(b.Start.Time(now))) {
+		i.Stop = o.Stop
+	} else {
+		i.Stop = b.Stop
+	}
+
 	return
 }
 
